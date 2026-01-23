@@ -1,0 +1,49 @@
+---
+title: "Async Race Condition"
+difficulty: "Senior"
+category: "Data Fetching"
+---
+
+# Prevent the Race
+
+Fast typing triggers overlapping requests. A slower response can overwrite a
+newer result. Fix the race by ignoring stale responses.
+
+<InteractiveTask
+  taskTitle="Async Race Condition"
+  solution="Track the latest request with a flag or AbortController and ignore stale responses."
+>
+
+```jsx
+function UserSearch({ api }) {
+  const [query, setQuery] = useState('');
+  const [users, setUsers] = useState([]);
+
+  useEffect(() => {
+    if (!query) {
+      setUsers([]);
+      return;
+    }
+
+    api.searchUsers(query).then(result => {
+      setUsers(result);
+    });
+  }, [query, api]);
+
+  return (
+    <div>
+      <input
+        value={query}
+        onChange={event => setQuery(event.target.value)}
+        placeholder="Search users"
+      />
+      <ul>
+        {users.map(user => (
+          <li key={user.id}>{user.name}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+</InteractiveTask>

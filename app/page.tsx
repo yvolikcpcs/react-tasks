@@ -5,25 +5,37 @@ export default function Home() {
   const tasks = getAllTasks();
 
   return (
-    <main className="max-w-4xl mx-auto p-8">
-      <h1 className="text-4xl font-bold mb-8">React Level-Up Tasks</h1>
-      <div className="grid gap-4">
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">React Challenges</h1>
+        <p className="text-slate-500 mt-2">Pick a task and start coding with AI feedback.</p>
+      </div>
+
+      <div className="grid gap-3">
         {tasks.map((task) => (
           <Link 
             key={task.slug} 
             href={`/tasks/${task.slug}`}
-            className="p-6 border rounded-xl hover:border-blue-500 transition-colors shadow-sm"
+            className="p-5 border rounded-lg hover:bg-slate-50 hover:border-blue-400 transition-all flex items-center justify-between group"
           >
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">{task.title}</h2>
-              <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-                {task.difficulty}
-              </span>
+            <div>
+              <h2 className="font-semibold text-slate-800 group-hover:text-blue-600">
+                {task.title}
+              </h2>
+              <div className="flex gap-3 mt-1 text-xs text-slate-500 uppercase tracking-wider">
+                <span>{task.difficulty}</span>
+                <span>•</span>
+                <span>{task.category}</span>
+              </div>
             </div>
-            <p className="text-gray-500 mt-2">{task.category}</p>
+            
+            {/* Arrow on hover */}
+            <span className="text-slate-300 group-hover:text-blue-500 transition-colors">
+              →
+            </span>
           </Link>
         ))}
       </div>
-    </main>
+    </div>
   );
 }
