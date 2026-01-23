@@ -5,12 +5,16 @@ difficulty: "Middle"
 
 # Fix the Counter
 
-The counter in `setInterval` always sees the initial value of `count`. 
+The counter in `setInterval` always sees the initial value of `count` because of a **stale closure**. 
 Use the functional update pattern to fix it.
 
 <InteractiveTask 
-  taskTitle="Stale Closure"
-  initialCode="function Counter() {
+  taskTitle="Stale Closure" 
+  solution="setCount(c => c + 1)"
+>
+
+```jsx
+function Counter() {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
@@ -21,6 +25,6 @@ Use the functional update pattern to fix it.
   }, []);
 
   return <h1>{count}</h1>;
-}"
-  solution="setCount(c => c + 1)"
-/>
+}
+```
+</InteractiveTask>
