@@ -3,7 +3,6 @@ import path from 'path';
 import matter from 'gray-matter';
 
 const contentDirectory = path.join(process.cwd(), 'content');
-  console.log('contentDirectory', contentDirectory);
 
 export function getAllTasks() {
   const files = fs.readdirSync(contentDirectory);
@@ -17,17 +16,15 @@ export function getAllTasks() {
     return {
       slug,
       title: data.title,
-      difficulty: data.difficulty,
+      level: data.level,
       category: data.category,
     };
   });
 }
 
 export async function getTaskBySlug(slug: string) {
-  console.log('getTaskBySlug slug', slug);
   const fullPath = path.join(contentDirectory, `${slug}.mdx`);
   const fileContents = fs.readFileSync(fullPath, 'utf8');
-  console.log('fileContents', fileContents);
   const { data, content } = matter(fileContents);
 
   return { data, content };
