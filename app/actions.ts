@@ -19,12 +19,12 @@ const redis = new Redis({
 
 /**
  * 2. RATELIMIT CONFIGURATION
- * Sliding window: allows 2 requests per 60 seconds.
+ * Sliding window: allows 1 request per 60 seconds.
  * This is more flexible than a fixed window as it resets gradually.
  */
 const ratelimit = new Ratelimit({
   redis: redis,
-  limiter: Ratelimit.slidingWindow(2, '60 s'),
+  limiter: Ratelimit.slidingWindow(1, '60 s'),
   analytics: true,
   prefix: '@upstash/ratelimit',
 });
