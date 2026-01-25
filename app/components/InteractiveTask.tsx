@@ -28,9 +28,10 @@ interface EvaluationResult {
 export default function InteractiveTask({ children, taskTitle, solution }: InteractiveTaskProps) {
   // --- State Management ---
   const [loading, setLoading] = useState(false);
+  const [showHint, setShowHint] = useState(false);
   const [result, setResult] = useState<EvaluationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-
+  console.log('solution', solution);
   /**
    * Recursively extracts plain text from React nodes.
    * This is essential for MDX where code blocks are wrapped in <pre><code> structures.
@@ -139,9 +140,24 @@ export default function InteractiveTask({ children, taskTitle, solution }: Inter
 
       {/* --- Footer Action Bar --- */}
       <div className="p-4 bg-[#1e1e1e] border-t border-slate-800 flex justify-between items-center">
-        <p className="text-sm text-slate-500 italic">
-          Tip: Fix the stale closure to pass the task.
-        </p>
+        <div>
+          <p className="text-sm text-slate-500 italic">
+            Use the "Verify Solution" button to get AI feedback on your code.
+          </p>
+          {showHint && solution && (
+            <p className="text-sm text-slate-500 italic">
+              <Lightbulb className="inline w-4 h-4 mr-1 text-yellow-400" />
+              Hint: {solution}
+            </p>
+          )}
+        </div>
+        
+        <button
+          onClick={() => setShowHint(true)}
+          className="flex items-center gap-2 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold transition-all shadow-lg active:scale-95"
+        >
+          Show Solution
+        </button>
         <button
           onClick={handleCheck}
           disabled={loading}
