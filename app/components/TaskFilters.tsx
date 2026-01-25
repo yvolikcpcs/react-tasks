@@ -135,8 +135,8 @@ export default function TaskFilters({ tasks }: { tasks: Task[] }) {
                 {task.title}
               </h2>
               <div className="flex gap-3 mt-1 text-xs text-slate-500 uppercase tracking-wider">
-                <LevelBadge level={task.level} />
-                <CategoryBadge category={task.category} />
+                <LevelBadge level={task.level} link={false} />
+                <CategoryBadge category={task.category} link={false} />
               </div>
             </div>
 
