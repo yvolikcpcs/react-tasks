@@ -1,6 +1,6 @@
 'use server'
 
-import { generateObject } from 'ai';
+import { generateText, Output } from 'ai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { z } from 'zod';
 import { headers } from 'next/headers';
@@ -34,7 +34,7 @@ const google = createGoogleGenerativeAI({
 });
 
 const RESPONSE_SCHEMA = z.object({
-  score: z.number().min(0).max(100),
+  score: z.number().int().min(0).max(100),
   isCorrect: z.boolean(),
   feedback: z.string(),
   hints: z.array(z.string()),
@@ -72,8 +72,7 @@ export async function checkSolution(
     };
   }
 
-  // Model fallback strategy
-  const models = ['gemini-2.0-flash-lite', 'gemini-2.0-flash'];
+  const models = ['gemini-2.5-flash'];
 
   for (const modelId of models) {
     try {
@@ -82,9 +81,13 @@ export async function checkSolution(
        * We include the referenceSolution in the system prompt so the AI 
        * understands the specific requirements and "gold standard" for the task.
        */
-      const { object } = await generateObject({
+      const { output: evaluation } = await generateText({
         model: google(modelId),
-        schema: RESPONSE_SCHEMA,
+        output: Output.object({
+          schema: RESPONSE_SCHEMA,
+          name: 'evaluation',
+          description: 'Evaluation result for a React task solution.',
+        }),
         system: `You are a Senior React Mentor. 
         You will be provided with a Reference Solution. 
         Use it as the primary criteria for correctness. 
@@ -101,13 +104,18 @@ export async function checkSolution(
           
           Analyze if the user's code is functionally equivalent to the reference solution 
           and follows React best practices.
+          
+          Return score as an integer from 0 to 100 (not 0 to 1).
         `,
       });
-
-      return object;
-    } catch (error: any) {
+      console.log("AI Evaluation Output:", evaluation);
+      return evaluation;
+    } catch (error: unknown) {
       // If we hit provider-side limits (429), try the next model in the array
-      if (error.status === 429 && modelId !== models[models.length - 1]) continue;
+      const status = typeof error === 'object' && error !== null && 'status' in error
+        ? (error as { status?: number }).status
+        : undefined;
+      if (status === 429 && modelId !== models[models.length - 1]) continue;
       console.error("AI Generation Error:", error);
       break;
     }

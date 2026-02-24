@@ -156,7 +156,7 @@ export default function InteractiveTask({ children, taskTitle, solution }: Inter
           onClick={() => setShowHint(true)}
           className="flex items-center gap-2 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold transition-all shadow-lg active:scale-95"
         >
-          Show Solution
+          Show hint
         </button>
         <button
           onClick={handleCheck}
