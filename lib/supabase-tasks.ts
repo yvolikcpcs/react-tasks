@@ -1,4 +1,5 @@
 import type { Difficulty } from '@/lib/types/task';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 type TaskRow = {
   slug: string;
@@ -13,35 +14,18 @@ type TaskRow = {
   } | null;
 };
 
-function getSupabaseConfig() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !key) {
-    throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured');
-  }
-
-  return { url, key };
-}
-
 export async function getAllTasks() {
-  const { url, key } = getSupabaseConfig();
-  const response = await fetch(
-    `${url}/rest/v1/tasks?select=slug,title,difficulty,tags,hint`,
-    {
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-      },
-      cache: 'no-store',
-    }
-  );
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('slug,title,difficulty,tags,hint')
+    .order('created_at', { ascending: false });
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch tasks: ${await response.text()}`);
+  if (error) {
+    throw new Error(`Failed to fetch tasks: ${error.message}`);
   }
 
-  const rows = (await response.json()) as TaskRow[];
+  const rows = (data ?? []) as TaskRow[];
   return rows.map((row) => ({
     slug: row.slug,
     title: row.title,
@@ -51,24 +35,16 @@ export async function getAllTasks() {
 }
 
 export async function getTaskBySlug(slug: string) {
-  const { url, key } = getSupabaseConfig();
-  const response = await fetch(
-    `${url}/rest/v1/tasks?select=slug,title,difficulty,tags,hint,content&slug=eq.${encodeURIComponent(slug)}&limit=1`,
-    {
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-      },
-      cache: 'no-store',
-    }
-  );
+  const supabase = await createSupabaseServerClient();
+  const { data: row, error } = await supabase
+    .from('tasks')
+    .select('slug,title,difficulty,tags,hint,content')
+    .eq('slug', slug)
+    .maybeSingle();
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch task "${slug}": ${await response.text()}`);
+  if (error) {
+    throw new Error(`Failed to fetch task "${slug}": ${error.message}`);
   }
-
-  const rows = (await response.json()) as TaskRow[];
-  const row = rows[0];
 
   if (!row) {
     return null;
