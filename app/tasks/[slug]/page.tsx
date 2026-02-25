@@ -1,9 +1,9 @@
-import { getTaskBySlug } from '@/lib/supabaseTasks';
+import { getTaskBySlug } from '@/lib/supabase-tasks';
 import { MDXRemote } from 'next-mdx-remote/rsc';
 import { notFound } from 'next/navigation';
-import InteractiveTask from '@/app/components/InteractiveTask';
-import DifficultyBadge from '@/app/components/DifficultyBadge';
-import TagBadge from '@/app/components/TagBadge';
+import TaskInteractive from '@/app/components/task/task-interactive';
+import DifficultyBadge from '@/app/components/badge/difficulty-badge';
+import TagBadge from '@/app/components/badge/tag-badge';
 import { ChevronLeft, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 
@@ -51,7 +51,7 @@ export default async function TaskPage({ params }: { params: Promise<{ slug: str
                 <MDXRemote source={data.description} />
             </div>
 
-            <InteractiveTask
+            <TaskInteractive
               starterCode={data.starterCode}
               taskTitle={data.title}
               solution={data.referenceSolution}

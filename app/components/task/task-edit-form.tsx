@@ -4,9 +4,10 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Sparkles } from 'lucide-react';
 import { createTaskAction, generateTaskAction } from '@/app/actions';
-import Modal from './ui/Modal';
-
-type Difficulty = 'easy' | 'medium' | 'hard';
+import type { Difficulty } from '@/lib/types/task';
+import Modal from '../ui/modal';
+import FormField from '../ui/form/form-field';
+import TextareaField from '../ui/form/textarea-field';
 
 type TaskFormData = {
   title: string;
@@ -28,7 +29,7 @@ const EMPTY_FORM: TaskFormData = {
   tags: ['react'],
 };
 
-export default function TaskAdminForm() {
+export default function TaskForm() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [topic, setTopic] = useState('');
@@ -62,6 +63,22 @@ export default function TaskAdminForm() {
     setFormData((prev) => ({ ...prev, tags: nextTags.length > 0 ? nextTags : ['react'] }));
   };
 
+  const getMissingRequiredFields = () => {
+    const missing: string[] = [];
+
+    if (!formData.title.trim()) missing.push('Title');
+    if (!formData.description.trim()) missing.push('Description');
+    if (!formData.hint.trim()) missing.push('Hint');
+    if (!formData.starterCode.trim()) missing.push('Starter Code');
+    if (!formData.referenceSolution.trim()) missing.push('Reference Solution');
+    if (formData.tags.length === 0 || formData.tags.every((tag) => !tag.trim())) missing.push('Tags');
+
+    return missing;
+  };
+
+  const missingFields = getMissingRequiredFields();
+  const hasMissingRequiredFields = missingFields.length > 0;
+
   const handleGenerate = async () => {
     setLoadingGenerate(true);
     setError(null);
@@ -77,6 +94,11 @@ export default function TaskAdminForm() {
   };
 
   const handleSave = async () => {
+    if (hasMissingRequiredFields) {
+      setError(`Please fill all required fields: ${missingFields.join(', ')}.`);
+      return;
+    }
+
     setLoadingSave(true);
     setError(null);
     try {
@@ -119,7 +141,7 @@ export default function TaskAdminForm() {
             <button
               type="button"
               onClick={handleSave}
-              disabled={loadingSave}
+              disabled={loadingSave || hasMissingRequiredFields}
               className="cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:bg-slate-400"
             >
               {loadingSave ? 'Saving...' : 'Save Task'}
@@ -129,13 +151,17 @@ export default function TaskAdminForm() {
       >
         <div className="space-y-4">
           <div className="grid gap-2">
-            <label className="text-sm font-semibold text-slate-700">Topic for AI Generation</label>
+            <label htmlFor="task-topic" className="text-sm font-semibold text-slate-700">
+              Topic for AI Generation
+            </label>
             <div className="flex gap-2">
-              <input
+              <FormField
+                id="task-topic"
                 value={topic}
                 onChange={(event) => setTopic(event.target.value)}
                 placeholder="Example: useEffect cleanup and race conditions"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500"
+                className="w-full"
+                inputClassName="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500"
               />
               <button
                 type="button"
@@ -149,41 +175,42 @@ export default function TaskAdminForm() {
             </div>
           </div>
 
-          <div className="grid gap-2">
-            <label className="text-sm font-semibold text-slate-700">Title</label>
-            <input
-              value={formData.title}
-              onChange={(event) => updateField('title', event.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500"
-            />
-          </div>
+          <FormField
+            id="task-title"
+            label="Title"
+            value={formData.title}
+            onChange={(event) => updateField('title', event.target.value)}
+            required
+          />
 
-          <div className="grid gap-2">
-            <label className="text-sm font-semibold text-slate-700">Description (Markdown)</label>
-            <textarea
-              value={formData.description}
-              onChange={(event) => updateField('description', event.target.value)}
-              rows={5}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500"
-            />
-          </div>
+          <TextareaField
+            id="task-description"
+            label="Description (Markdown)"
+            value={formData.description}
+            onChange={(event) => updateField('description', event.target.value)}
+            rows={5}
+            required
+          />
 
-          <div className="grid gap-2">
-            <label className="text-sm font-semibold text-slate-700">Hint</label>
-            <textarea
-              value={formData.hint}
-              onChange={(event) => updateField('hint', event.target.value)}
-              rows={2}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500"
-            />
-          </div>
+          <TextareaField
+            id="task-hint"
+            label="Hint"
+            value={formData.hint}
+            onChange={(event) => updateField('hint', event.target.value)}
+            rows={2}
+            required
+          />
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="grid gap-2">
-              <label className="text-sm font-semibold text-slate-700">Difficulty</label>
+              <label htmlFor="task-difficulty" className="text-sm font-semibold text-slate-700">
+                Difficulty
+              </label>
               <select
+                id="task-difficulty"
                 value={formData.difficulty}
                 onChange={(event) => updateField('difficulty', event.target.value)}
+                required
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500"
               >
                 <option value="easy">easy</option>
@@ -191,35 +218,34 @@ export default function TaskAdminForm() {
                 <option value="hard">hard</option>
               </select>
             </div>
-            <div className="grid gap-2">
-              <label className="text-sm font-semibold text-slate-700">Tags (comma-separated)</label>
-              <input
-                value={formData.tags.join(', ')}
-                onChange={(event) => updateTags(event.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-2">
-            <label className="text-sm font-semibold text-slate-700">Starter Code (TSX)</label>
-            <textarea
-              value={formData.starterCode}
-              onChange={(event) => updateField('starterCode', event.target.value)}
-              rows={7}
-              className="rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs text-slate-800 outline-none focus:border-blue-500"
+            <FormField
+              id="task-tags"
+              label="Tags (comma-separated)"
+              value={formData.tags.join(', ')}
+              onChange={(event) => updateTags(event.target.value)}
+              required
             />
           </div>
 
-          <div className="grid gap-2">
-            <label className="text-sm font-semibold text-slate-700">Reference Solution (TSX)</label>
-            <textarea
-              value={formData.referenceSolution}
-              onChange={(event) => updateField('referenceSolution', event.target.value)}
-              rows={7}
-              className="rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs text-slate-800 outline-none focus:border-blue-500"
-            />
-          </div>
+          <TextareaField
+            id="task-starter-code"
+            label="Starter Code (TSX)"
+            value={formData.starterCode}
+            onChange={(event) => updateField('starterCode', event.target.value)}
+            rows={7}
+            required
+            textareaClassName="rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs text-slate-800 outline-none focus:border-blue-500"
+          />
+
+          <TextareaField
+            id="task-reference-solution"
+            label="Reference Solution (TSX)"
+            value={formData.referenceSolution}
+            onChange={(event) => updateField('referenceSolution', event.target.value)}
+            rows={7}
+            required
+            textareaClassName="rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs text-slate-800 outline-none focus:border-blue-500"
+          />
 
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>

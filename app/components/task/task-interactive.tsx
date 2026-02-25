@@ -5,7 +5,7 @@ import Editor from '@monaco-editor/react';
 import { checkSolution } from '@/app/actions';
 import { Loader2, CheckCircle2, XCircle, Lightbulb, RotateCcw } from 'lucide-react';
 
-interface InteractiveTaskProps {
+interface TaskInteractiveProps {
   starterCode: string;
   taskTitle: string;
   solution: string;
@@ -22,7 +22,7 @@ interface EvaluationResult {
   hints: string[];
 }
 
-export default function InteractiveTask({ starterCode, taskTitle, solution, hint }: InteractiveTaskProps) {
+export default function TaskInteractive({ starterCode, taskTitle, solution, hint }: TaskInteractiveProps) {
   // --- State Management ---
   const [loading, setLoading] = useState(false);
   const [showHint, setShowHint] = useState(false);
@@ -104,20 +104,18 @@ export default function InteractiveTask({ starterCode, taskTitle, solution, hint
       />
 
       {/* --- Footer Action Bar --- */}
-      <div className="p-4 bg-[#1e1e1e] border-t border-slate-800 flex gap-2 justify-between items-center">
-        <div>
+      <div className="p-4 bg-[#1e1e1e] border-t border-slate-800">
+        <p className="text-sm text-slate-500 italic">
+          Use the &quot;Verify Solution&quot; button to get AI feedback on your code.
+        </p>
+        {showHint && (
           <p className="text-sm text-slate-500 italic">
-            Use the &quot;Verify Solution&quot; button to get AI feedback on your code.
+            <Lightbulb className="inline w-4 h-4 mr-1 text-yellow-400" />
+            Hint: {hint || result?.hints?.[0] || 'No hints available for this task.'}
           </p>
-          {showHint && (
-            <p className="text-sm text-slate-500 italic">
-              <Lightbulb className="inline w-4 h-4 mr-1 text-yellow-400" />
-              Hint: {hint || result?.hints?.[0] || 'No hints available for this task.'}
-            </p>
-          )}
-        </div>
+        )}
         
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 shrink-0 mt-4">
           <button
             onClick={() => setShowHint(!showHint)}
             className="flex items-center gap-2 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold transition-all shadow-lg active:scale-95"

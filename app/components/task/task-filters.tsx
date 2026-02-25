@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import TaskCard from './task/TaskPreviewCard';
+import TaskCard from './task-preview-card';
 import type { Difficulty, Task } from '@/lib/types/task';
 
 type NormalizedTask = Task & {

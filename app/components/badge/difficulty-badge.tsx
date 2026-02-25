@@ -1,6 +1,7 @@
 import { BarChart3 } from 'lucide-react';
 import Link from 'next/link';
-import { getDifficultyColor } from '@/lib/styleUtils';
+import { getDifficultyColor } from '@/lib/style-utils';
+import BadgePill from '@/app/components/ui/badge-pill';
 
 type DifficultyBadgeProps = {
   difficulty: string;
@@ -11,8 +12,7 @@ export default function DifficultyBadge({ difficulty, link = true }: DifficultyB
   const difficultyColor = getDifficultyColor(difficulty);
 
   return (
-    <div className="flex items-center text-sm font-medium text-slate-600 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
-      <BarChart3 className={`w-4 h-4 mr-2 ${difficultyColor}`} />
+    <BadgePill icon={<BarChart3 className={`mr-2 h-4 w-4 ${difficultyColor}`} />}>
       {link ? (
         <Link href={`/?difficulty=${difficulty}`} className="text-blue-600 hover:underline">
           {difficulty}
@@ -20,6 +20,6 @@ export default function DifficultyBadge({ difficulty, link = true }: DifficultyB
       ) : (
         <span>{difficulty}</span>
       )}
-    </div>
+    </BadgePill>
   );
 }

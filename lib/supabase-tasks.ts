@@ -1,4 +1,4 @@
-type Difficulty = 'easy' | 'medium' | 'hard';
+import type { Difficulty } from '@/lib/types/task';
 
 type TaskRow = {
   slug: string;
