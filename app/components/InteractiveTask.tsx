@@ -1,18 +1,15 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, ReactNode, ReactElement } from 'react';
+import { useMemo, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import { checkSolution } from '@/app/actions';
 import { Loader2, CheckCircle2, XCircle, Lightbulb, RotateCcw } from 'lucide-react';
 
-/**
- * Interface for the InteractiveTask component props.
- * Using ReactNode for children to support MDX content.
- */
 interface InteractiveTaskProps {
-  children: ReactNode;
+  starterCode: string;
   taskTitle: string;
   solution: string;
+  hint?: string;
 }
 
 /**
@@ -25,46 +22,14 @@ interface EvaluationResult {
   hints: string[];
 }
 
-export default function InteractiveTask({ children, taskTitle, solution }: InteractiveTaskProps) {
+export default function InteractiveTask({ starterCode, taskTitle, solution, hint }: InteractiveTaskProps) {
   // --- State Management ---
   const [loading, setLoading] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [result, setResult] = useState<EvaluationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  console.log('solution', solution);
-  /**
-   * Recursively extracts plain text from React nodes.
-   * This is essential for MDX where code blocks are wrapped in <pre><code> structures.
-   */
-  const extractCode = useCallback((nodes: ReactNode): string => {
-    // Return string or number directly
-    if (typeof nodes === 'string' || typeof nodes === 'number') {
-      return String(nodes);
-    }
 
-    // Recursively process arrays of nodes
-    if (Array.isArray(nodes)) {
-      return nodes.map(extractCode).join('');
-    }
-
-    // Check for valid React elements and extract from their children props
-    if (React.isValidElement(nodes)) {
-      const element = nodes as ReactElement<{ children?: ReactNode }>;
-      if (element.props.children) {
-        return extractCode(element.props.children);
-      }
-    }
-
-    return '';
-  }, []);
-
-  /**
-   * Memoize the initial code to prevent unnecessary recalculations.
-   * We trim the result to remove leading/trailing whitespace from MDX formatting.
-   */
-  const initialCode = useMemo(() => {
-    return extractCode(children).trim();
-  }, [children, extractCode]);
+  const initialCode = useMemo(() => starterCode.trim(), [starterCode]);
 
   // Main state for the code editor content
   const [code, setCode] = useState(initialCode);
@@ -139,39 +104,41 @@ export default function InteractiveTask({ children, taskTitle, solution }: Inter
       />
 
       {/* --- Footer Action Bar --- */}
-      <div className="p-4 bg-[#1e1e1e] border-t border-slate-800 flex justify-between items-center">
+      <div className="p-4 bg-[#1e1e1e] border-t border-slate-800 flex gap-2 justify-between items-center">
         <div>
           <p className="text-sm text-slate-500 italic">
-            Use the "Verify Solution" button to get AI feedback on your code.
+            Use the &quot;Verify Solution&quot; button to get AI feedback on your code.
           </p>
-          {showHint && solution && (
+          {showHint && (
             <p className="text-sm text-slate-500 italic">
               <Lightbulb className="inline w-4 h-4 mr-1 text-yellow-400" />
-              Hint: {solution}
+              Hint: {hint || result?.hints?.[0] || 'No hints available for this task.'}
             </p>
           )}
         </div>
         
-        <button
-          onClick={() => setShowHint(true)}
-          className="flex items-center gap-2 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold transition-all shadow-lg active:scale-95"
-        >
-          Show hint
-        </button>
-        <button
-          onClick={handleCheck}
-          disabled={loading}
-          className="flex items-center gap-2 px-8 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 text-white rounded-lg font-bold transition-all shadow-lg active:scale-95"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Checking...
-            </>
-          ) : (
-            'Verify Solution'
-          )}
-        </button>
+        <div className="flex gap-2 shrink-0">
+          <button
+            onClick={() => setShowHint(!showHint)}
+            className="flex items-center gap-2 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold transition-all shadow-lg active:scale-95"
+          >
+            {showHint ? 'Hide Hint' : 'Show Hint'}
+          </button>
+          <button
+            onClick={handleCheck}
+            disabled={loading}
+            className="flex items-center gap-2 px-8 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 text-white rounded-lg font-bold transition-all shadow-lg active:scale-95"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Checking...
+              </>
+            ) : (
+              'Verify Solution'
+            )}
+          </button>
+        </div>
       </div>
 
       {/* --- AI Feedback Display --- */}

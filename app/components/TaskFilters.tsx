@@ -3,120 +3,119 @@
 import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { BarChart3 } from 'lucide-react';
-import { getLevelColor } from '@/lib/styleUtils';
-import LevelBadge from './LevelBadge';
-import CategoryBadge from './CategoryBadge';
+import DifficultyBadge from './DifficultyBadge';
+import TagBadge from './TagBadge';
 
 type Task = {
   slug: string;
   title: string;
-  category?: string;
-  level?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+  tags?: string[];
 };
 
 type NormalizedTask = Task & {
-  category: string;
-  level: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  tags: string[];
 };
 
 const ALL_FILTER = 'All';
-const DEFAULT_CATEGORY = 'General';
-const DEFAULT_LEVEL = 'Unspecified';
+const DEFAULT_DIFFICULTY: NormalizedTask['difficulty'] = 'medium';
 
 export default function TaskFilters({ tasks }: { tasks: Task[] }) {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [categoryFilter, setCategoryFilter] = useState(() => searchParams.get('category') || ALL_FILTER);
-  const [levelFilter, setlevelFilter] = useState(() => searchParams.get('level') || ALL_FILTER);
+  const [tagFilter, setTagFilter] = useState(() => searchParams.get('tag') || ALL_FILTER);
+  const [difficultyFilter, setDifficultyFilter] = useState(
+    () => searchParams.get('difficulty') || ALL_FILTER
+  );
 
   // Update URL when filters change
   useEffect(() => {
     const params = new URLSearchParams();
-    if (categoryFilter !== ALL_FILTER) {
-      params.set('category', categoryFilter);
+    if (tagFilter !== ALL_FILTER) {
+      params.set('tag', tagFilter);
     }
-    if (levelFilter !== ALL_FILTER) {
-      params.set('level', levelFilter);
+    if (difficultyFilter !== ALL_FILTER) {
+      params.set('difficulty', difficultyFilter);
     }
     const query = params.toString();
     const url = query ? `/?${query}` : '/';
     router.replace(url, { scroll: false });
-  }, [categoryFilter, levelFilter, router]);
+  }, [tagFilter, difficultyFilter, router]);
 
   const normalizedTasks = useMemo<NormalizedTask[]>(
     () =>
       tasks.map((task) => ({
         ...task,
-        category: task.category ?? DEFAULT_CATEGORY,
-        level: task.level ?? DEFAULT_LEVEL,
+        difficulty: task.difficulty ?? DEFAULT_DIFFICULTY,
+        tags: task.tags ?? [],
       })),
     [tasks]
   );
 
-  const categories = useMemo(() => {
-    const unique = Array.from(new Set(normalizedTasks.map((task) => task.category)));
+  const tags = useMemo(() => {
+    const unique = Array.from(new Set(normalizedTasks.flatMap((task) => task.tags)));
     return [ALL_FILTER, ...unique.sort()];
   }, [normalizedTasks]);
 
-  const levels = useMemo(() => {
-    const unique = Array.from(new Set(normalizedTasks.map((task) => task.level)));
+  const difficulties = useMemo(() => {
+    const unique = Array.from(new Set(normalizedTasks.map((task) => task.difficulty)));
     return [ALL_FILTER, ...unique.sort()];
   }, [normalizedTasks]);
 
   const filteredTasks = useMemo(
     () =>
       normalizedTasks.filter((task) => {
-        if (categoryFilter !== ALL_FILTER && task.category !== categoryFilter) {
+        if (tagFilter !== ALL_FILTER && !task.tags.includes(tagFilter)) {
           return false;
         }
-        if (levelFilter !== ALL_FILTER && task.level !== levelFilter) {
+        if (difficultyFilter !== ALL_FILTER && task.difficulty !== difficultyFilter) {
           return false;
         }
         return true;
       }),
-    [normalizedTasks, categoryFilter, levelFilter]
+    [normalizedTasks, tagFilter, difficultyFilter]
   );
 
   return (
     <div className="space-y-6">
       <section className="space-y-4">
         <div>
-          <p className="text-xs font-semibold uppercase text-slate-500">Category</p>
+          <p className="text-xs font-semibold uppercase text-slate-500">Tag</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {categories.map((category) => (
+            {tags.map((tag) => (
               <button
-                key={category}
+                key={tag}
                 type="button"
-                onClick={() => setCategoryFilter(category)}
+                onClick={() => setTagFilter(tag)}
                 className={`rounded-full border px-3 py-1 text-xs font-semibold transition cursor-pointer ${
-                  categoryFilter === category
+                  tagFilter === tag
                     ? 'border-blue-500 bg-blue-50 text-blue-700'
                     : 'border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-600'
                 }`}
               >
-                {category}
+                {tag}
               </button>
             ))}
           </div>
         </div>
 
         <div>
-          <p className="text-xs font-semibold uppercase text-slate-500">Level</p>
+          <p className="text-xs font-semibold uppercase text-slate-500">Difficulty</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {levels.map((level) => (
+            {difficulties.map((difficulty) => (
               <button
-                key={level}
+                key={difficulty}
                 type="button"
-                onClick={() => setlevelFilter(level)}
+                onClick={() => setDifficultyFilter(difficulty)}
                 className={`rounded-full border px-3 py-1 text-xs font-semibold transition cursor-pointer ${
-                  levelFilter === level
+                  difficultyFilter === difficulty
                     ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
                     : 'border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-600'
                 }`}
               >
-                {level}
+                {difficulty}
               </button>
             ))}
           </div>
@@ -134,9 +133,11 @@ export default function TaskFilters({ tasks }: { tasks: Task[] }) {
               <h2 className="font-semibold text-slate-800 group-hover:text-blue-600">
                 {task.title}
               </h2>
-              <div className="flex gap-3 mt-1 text-xs text-slate-500 uppercase tracking-wider">
-                <LevelBadge level={task.level} link={false} />
-                <CategoryBadge category={task.category} link={false} />
+              <div className="flex flex-wrap gap-3 mt-1 text-xs text-slate-500 uppercase tracking-wider">
+                <DifficultyBadge difficulty={task.difficulty} link={false} />
+                {task.tags.map((tag) => (
+                  <TagBadge key={`${task.slug}-${tag}`} tag={tag} link={false} />
+                ))}
               </div>
             </div>
 

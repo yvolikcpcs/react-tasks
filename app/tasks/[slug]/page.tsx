@@ -1,9 +1,9 @@
-import { getTaskBySlug } from '@/lib/mdx';
+import { getTaskBySlug } from '@/lib/supabaseTasks';
 import { MDXRemote } from 'next-mdx-remote/rsc';
 import { notFound } from 'next/navigation';
 import InteractiveTask from '@/app/components/InteractiveTask';
-import LevelBadge from '@/app/components/LevelBadge';
-import CategoryBadge from '@/app/components/CategoryBadge';
+import DifficultyBadge from '@/app/components/DifficultyBadge';
+import TagBadge from '@/app/components/TagBadge';
 import { ChevronLeft, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 
@@ -15,7 +15,7 @@ export default async function TaskPage({ params }: { params: Promise<{ slug: str
         notFound();
     }
 
-    const { data, content } = task;
+    const { data } = task;
 
     return (
         <article className="max-w-4xl mx-auto">
@@ -38,16 +38,25 @@ export default async function TaskPage({ params }: { params: Promise<{ slug: str
                     </h1>
                 </div>
 
-                <div className="flex gap-4">
-                    <LevelBadge level={data.level} />
-                    <CategoryBadge category={data.category} />
+                <div className="flex gap-4 flex-wrap">
+                    <DifficultyBadge difficulty={data.difficulty} />
+                    {data.tags.map((tag: string) => (
+                      <TagBadge key={`${slug}-${tag}`} tag={tag} />
+                    ))}
                 </div>
             </header>
             
-            {/* MDX Content */}
+            {/* Description Markdown */}
             <div className="prose prose-slate max-w-none prose-headings:font-bold prose-code:text-blue-600">
-                <MDXRemote source={content} components={{ InteractiveTask }} />
+                <MDXRemote source={data.description} />
             </div>
+
+            <InteractiveTask
+              starterCode={data.starterCode}
+              taskTitle={data.title}
+              solution={data.referenceSolution}
+              hint={data.hint}
+            />
         </article>
     );
 }

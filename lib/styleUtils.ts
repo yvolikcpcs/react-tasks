@@ -1,12 +1,12 @@
-type Level = string | undefined | null;
+type Difficulty = string | undefined | null;
 
-export function getLevelColor(level: Level) {
-  switch (level?.toLowerCase()) {
+export function getDifficultyColor(difficulty: Difficulty) {
+  switch (difficulty?.toLowerCase()) {
     case 'easy':
       return 'text-emerald-500';
-    case 'middle':
+    case 'medium':
       return 'text-amber-500';
-    case 'senior':
+    case 'hard':
       return 'text-rose-500';
     default:
       return 'text-slate-500';
