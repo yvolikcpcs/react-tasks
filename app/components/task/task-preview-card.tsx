@@ -1,9 +1,11 @@
 import Link from 'next/link';
 import DifficultyBadge from '../badge/difficulty-badge';
+import LanguageBadge from '../badge/language-badge';
 import TagBadge from '../badge/tag-badge';
 import type { Difficulty, Task } from '@/lib/types/task';
 
 export type TaskCardData = Task & {
+  languageName: string;
   difficulty: Difficulty;
   tags: string[];
 };
@@ -16,7 +18,8 @@ export default function TaskCard({ task }: { task: TaskCardData }) {
     >
       <div>
         <h2 className="font-semibold text-slate-800 group-hover:text-blue-600">{task.title}</h2>
-        <div className="mt-1 flex flex-wrap gap-3 text-xs uppercase tracking-wider text-slate-500">
+        <div className="mt-2 flex flex-wrap gap-2">
+          <LanguageBadge language={task.languageName} link={false} />
           <DifficultyBadge difficulty={task.difficulty} link={false} />
           {task.tags.map((tag) => (
             <TagBadge key={`${task.slug}-${tag}`} tag={tag} link={false} />

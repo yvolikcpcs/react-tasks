@@ -1,26 +1,30 @@
 import { generateText, Output } from 'ai';
 import { revalidatePath } from 'next/cache';
+import { serialize } from 'next-mdx-remote/serialize';
+import type { MDXRemoteSerializeResult } from 'next-mdx-remote';
 import { mentorModel } from './ai-client';
 import { getRequestIdentifier, requireTaskCreatorRole } from './auth';
 import { isSlugConflict, slugify } from './helpers';
-import {
-  checkSolutionRatelimit,
-  createTaskRatelimit,
-  generateTaskRatelimit,
-} from './rate-limit';
+import { checkSolutionRatelimit, generateTaskRatelimit } from './rate-limit';
 import { RESPONSE_SCHEMA, TASK_SCHEMA, type TaskInput } from './schemas';
+import type { LearningConfig } from '@/lib/learning-config';
+import { inferLanguageTag } from '@/lib/language-utils';
 
 type CheckSolutionResult = {
   score: number;
   isCorrect: boolean;
   feedback: string;
+  feedbackMdx?: MDXRemoteSerializeResult;
   hints: string[];
 };
 
 export async function checkSolutionImpl(
   userCode: string,
   taskTitle: string,
-  referenceSolution: string
+  referenceSolution: string,
+  config?: Pick<LearningConfig, 'aiMentorRole' | 'aiContentLanguage'> & {
+    languageName?: string;
+  }
 ): Promise<CheckSolutionResult> {
   const identifier = await getRequestIdentifier();
   const { success, reset } = await checkSolutionRatelimit.limit(identifier);
@@ -38,35 +42,42 @@ export async function checkSolutionImpl(
   }
 
   try {
+    const mentorRole = config?.aiMentorRole ?? 'Senior Programming Mentor';
+    const languageName = config?.languageName?.trim() || 'Programming Language';
+    const contentLanguage = config?.aiContentLanguage ?? 'English';
     const { output: evaluation } = await generateText({
       model: mentorModel,
       output: Output.object({
         schema: RESPONSE_SCHEMA,
         name: 'evaluation',
-        description: 'Evaluation result for a React task solution.',
+        description: `Evaluation result for a ${languageName} task solution.`,
       }),
-      system: `You are a Senior React Mentor.
-      You will be provided with a Reference Solution.
-      Use it as the primary criteria for correctness.
-      Be encouraging but technically rigorous.
-      Provide feedback in English.`,
-      prompt: `
-        Task Title: ${taskTitle}
+      system: `You are a ${mentorRole}.
+You will be provided with a Reference Solution.
+Use it as the primary criteria for correctness.
+Be encouraging but technically rigorous.
+Focus your review on ${languageName}.
+Provide feedback in ${contentLanguage}.`,
+      prompt: `Task Title: ${taskTitle}
 
-        Reference Solution (Use this as your guide):
-        ${referenceSolution}
+Reference Solution (Use this as your guide):
+${referenceSolution}
 
-        User's Submitted Code:
-        ${userCode}
+User's Submitted Code:
+${userCode}
 
-        Analyze if the user's code is functionally equivalent to the reference solution
-        and follows React best practices.
+Analyze if the user's code is functionally equivalent to the reference solution
+and follows strong ${languageName} practices.
 
-        Return score as an integer from 0 to 100 (not 0 to 1).
-      `,
+Return score as an integer from 0 to 100 (not 0 to 1).`,
     });
 
-    return evaluation;
+    const feedbackMdx = await serialize(evaluation.feedback);
+
+    return {
+      ...evaluation,
+      feedbackMdx,
+    };
   } catch (error: unknown) {
     console.error('AI Generation Error:', error);
   }
@@ -79,7 +90,14 @@ export async function checkSolutionImpl(
   };
 }
 
-export async function generateTaskActionImpl(topic: string): Promise<TaskInput> {
+export async function generateTaskActionImpl(
+  topic: string,
+  config?: Pick<LearningConfig, 'aiMentorRole' | 'aiContentLanguage'> & {
+    languageName?: string;
+    defaultTag?: string;
+    codeFileExtension?: string;
+  }
+): Promise<TaskInput> {
   await requireTaskCreatorRole();
 
   const identifier = await getRequestIdentifier();
@@ -93,25 +111,34 @@ export async function generateTaskActionImpl(topic: string): Promise<TaskInput> 
     );
   }
 
-  const safeTopic = topic.trim() || 'React hooks and state management';
+  const mentorRole = config?.aiMentorRole ?? 'Senior Programming Mentor';
+  const languageName = config?.languageName?.trim() || 'Programming Language';
+  const contentLanguage = config?.aiContentLanguage ?? 'English';
+  const defaultTag = config?.defaultTag ?? inferLanguageTag(languageName);
+  const fileExtension = config?.codeFileExtension ?? 'txt';
+  const safeTopic = topic.trim() || `${languageName} fundamentals and control flow`;
   const { output: generatedTask } = await generateText({
     model: mentorModel,
     output: Output.object({
       schema: TASK_SCHEMA,
       name: 'task',
-      description: 'Generated React coding task payload.',
+      description: `Generated ${languageName} coding task payload.`,
     }),
-    system:
-      'You are a Senior React Mentor. Generate a coding task. All content (title, description, code comments) must be in English. The description should be professional and clear. The starter code should have specific missing parts or bugs for the user to fix.',
-    prompt: `Generate one React coding interview task about: ${safeTopic}.
+    system: `You are a ${mentorRole}. Generate a coding task.
+All content (title, description, code comments) must be in ${contentLanguage}.
+The description should be professional and clear.
+The starter code should have specific missing parts or bugs for the user to fix.`,
+    prompt: `Generate one ${languageName} coding interview task about: ${safeTopic}.
 Return only data that fits the schema.
 
 Requirements:
+- languageName must be exactly "${languageName}"
 - description must be Markdown format
 - hint must be a short practical clue and must not reveal the full solution
-- starterCode must be valid TSX with intentional gaps/bugs, not more then 25 lines of code
-- referenceSolution must be valid TSX that fixes the task
-- tags should be short and interview-relevant`,
+- starterCode must be valid ${languageName} code with intentional gaps/bugs, not more then 25 lines of code
+- referenceSolution must be valid ${languageName} code that fixes the task
+- prefer snippets with .${fileExtension} style syntax
+- tags should be short and interview-relevant, include "${defaultTag}"`,
   });
 
   return TASK_SCHEMA.parse(generatedTask);
@@ -119,17 +146,6 @@ Requirements:
 
 export async function createTaskActionImpl(input: TaskInput): Promise<{ slug: string }> {
   const { supabase, user } = await requireTaskCreatorRole();
-
-  const identifier = await getRequestIdentifier();
-  const { success, reset } = await createTaskRatelimit.limit(identifier);
-
-  if (!success) {
-    const now = Date.now();
-    const remainingSeconds = Math.ceil((reset - now) / 1000);
-    throw new Error(
-      `Too many create requests. Please wait ${remainingSeconds} seconds and try again.`
-    );
-  }
 
   const data = TASK_SCHEMA.parse(input);
   const baseSlug = slugify(data.title);
@@ -150,6 +166,7 @@ export async function createTaskActionImpl(input: TaskInput): Promise<{ slug: st
       hint: data.hint,
       created_by: user.id,
       content: {
+        languageName: data.languageName,
         description: data.description,
         starterCode: data.starterCode,
         referenceSolution: data.referenceSolution,

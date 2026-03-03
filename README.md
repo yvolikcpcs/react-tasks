@@ -1,17 +1,19 @@
-# React Mentor AI
+# Code Mentor AI
 
-A React practice platform built with **Next.js 16** featuring:
+A programming practice platform built with **Next.js 16** featuring:
 - a task catalog stored in **Supabase**,
 - an interactive code editor,
 - AI-based solution review,
-- AI task generation from an admin form.
+- AI task generation from a creator form.
 
 ## Features
 
 - Browse tasks with `tag` and `difficulty` filters.
+- Passwordless authentication with Supabase email magic links.
+- Two roles: `student` and invite-only `creator`.
 - Open a task page with Markdown description and interactive validation UI.
 - Validate solutions with AI (`Gemini`) and get score, feedback, and hints.
-- Generate new React tasks with AI and save them to Supabase.
+- Generate new language-specific tasks with AI and save them to Supabase.
 - Automatic unique `slug` generation when creating tasks.
 - Rate limiting for AI checks using Upstash Redis.
 
@@ -29,9 +31,13 @@ A React practice platform built with **Next.js 16** featuring:
 - `app/page.tsx` - home page with task list.
 - `app/tasks/[slug]/page.tsx` - task details page.
 - `app/actions.ts` - server actions (AI check, generation, task creation).
-- `app/components/*` - UI components (filters, admin form, interactive editor, modal).
+- `app/components/*` - UI components (filters, creator form, interactive editor, modal).
+- `lib/learning-config.ts` - language-level tuning (language name, editor mode, extension, AI language context).
 - `lib/supabase-tasks.ts` - task fetching from Supabase.
 - `lib/supabase-server.ts` - Supabase server client (session cookies).
+- `lib/supabase-browser.ts` - Supabase browser client (client auth calls).
+- `app/auth/*` - passwordless auth pages and callback route.
+- `proxy.ts` - session refresh proxy for Supabase SSR auth cookies.
 - `supabase/sql/*.sql` - SQL scripts for database setup.
 
 ## Quick Start
@@ -52,6 +58,11 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 
 UPSTASH_REDIS_REST_URL=...
 UPSTASH_REDIS_REST_TOKEN=...
+
+RATE_LIMIT_CHECK_SOLUTION_LIMIT=1
+RATE_LIMIT_CHECK_SOLUTION_WINDOW="60 s"
+RATE_LIMIT_GENERATE_TASK_LIMIT=5
+RATE_LIMIT_GENERATE_TASK_WINDOW="10 m"
 ```
 
 ### 3. Prepare the database (Supabase)
@@ -61,6 +72,8 @@ Run SQL scripts from `supabase/sql` in your Supabase SQL Editor:
 1. `supabase/sql/001_tasks_schema.sql`
 2. `supabase/sql/002_add_hint_column.sql`
 3. `supabase/sql/003_roles_and_task_permissions.sql`
+4. `supabase/sql/004_creator_invites_and_limits.sql`
+5. `supabase/sql/005_task_create_daily_quota.sql`
 
 ### 4. Start the dev server
 
@@ -94,11 +107,13 @@ Open `http://localhost:3000`.
 ## Notes
 
 - Reads/writes use the authenticated user session + Supabase RLS policies.
-- `checkSolution` in `app/actions.ts` is rate-limited (currently 1 request per 60 seconds per client identifier).
-- `generateTaskAction` and `createTaskAction` also have rate limits.
-- `middleware.ts` also has a separate `/api/*` limiter (relevant if you add API routes).
+- `checkSolution` and `generateTaskAction` rate limits are configurable via `RATE_LIMIT_*` env vars.
+- Task create quota is enforced in Supabase RLS: `10/day` by default and `20/day` when
+  `public.user_roles.can_create_more_tasks = true`.
+- `proxy.ts` can also include `/api/*` rate-limit logic if you add API routes.
+- To retarget this app to a specific programming language, update `lib/learning-config.ts`.
 
 ## Possible Improvements
 
-- Add authentication and proper admin-only access for task creation.
+- Add management UI for creator invites and creator limit options.
 - Add e2e tests for the full flow: filters -> task page -> AI validation.

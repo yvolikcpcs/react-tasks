@@ -6,73 +6,133 @@ import TaskCard from './task-preview-card';
 import type { Difficulty, Task } from '@/lib/types/task';
 
 type NormalizedTask = Task & {
+  languageName: string;
   difficulty: Difficulty;
   tags: string[];
 };
 
 const ALL_FILTER = 'All';
 const DEFAULT_DIFFICULTY: NormalizedTask['difficulty'] = 'medium';
+const UNSPECIFIED_LANGUAGE = 'General';
 
-export default function TaskFilters({ tasks }: { tasks: Task[] }) {
+type TaskFiltersProps = {
+  tasks: Task[];
+};
+
+export default function TaskFilters({ tasks }: TaskFiltersProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
 
+  const [languageFilter, setLanguageFilter] = useState(() => searchParams.get('language') || ALL_FILTER);
   const [tagFilter, setTagFilter] = useState(() => searchParams.get('tag') || ALL_FILTER);
   const [difficultyFilter, setDifficultyFilter] = useState(
     () => searchParams.get('difficulty') || ALL_FILTER
   );
 
-  // Update URL when filters change
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (tagFilter !== ALL_FILTER) {
-      params.set('tag', tagFilter);
-    }
-    if (difficultyFilter !== ALL_FILTER) {
-      params.set('difficulty', difficultyFilter);
-    }
-    const query = params.toString();
-    const url = query ? `/?${query}` : '/';
-    router.replace(url, { scroll: false });
-  }, [tagFilter, difficultyFilter, router]);
-
   const normalizedTasks = useMemo<NormalizedTask[]>(
     () =>
       tasks.map((task) => ({
         ...task,
+        languageName:
+          task.languageName && task.languageName.trim().length > 0
+            ? task.languageName.trim()
+            : UNSPECIFIED_LANGUAGE,
         difficulty: task.difficulty ?? DEFAULT_DIFFICULTY,
         tags: task.tags ?? [],
       })),
     [tasks]
   );
 
-  const tags = useMemo(() => {
-    const unique = Array.from(new Set(normalizedTasks.flatMap((task) => task.tags)));
+  const languages = useMemo(() => {
+    const unique = Array.from(new Set(normalizedTasks.map((task) => task.languageName)));
     return [ALL_FILTER, ...unique.sort()];
   }, [normalizedTasks]);
 
-  const difficulties = useMemo(() => {
-    const unique = Array.from(new Set(normalizedTasks.map((task) => task.difficulty)));
-    return [ALL_FILTER, ...unique.sort()];
-  }, [normalizedTasks]);
-
-  const filteredTasks = useMemo(
+  const languageFilteredTasks = useMemo(
     () =>
       normalizedTasks.filter((task) => {
-        if (tagFilter !== ALL_FILTER && !task.tags.includes(tagFilter)) {
-          return false;
-        }
-        if (difficultyFilter !== ALL_FILTER && task.difficulty !== difficultyFilter) {
+        if (languageFilter !== ALL_FILTER && task.languageName !== languageFilter) {
           return false;
         }
         return true;
       }),
-    [normalizedTasks, tagFilter, difficultyFilter]
+    [normalizedTasks, languageFilter]
+  );
+
+  const tags = useMemo(() => {
+    const unique = Array.from(new Set(languageFilteredTasks.flatMap((task) => task.tags)));
+    return [ALL_FILTER, ...unique.sort()];
+  }, [languageFilteredTasks]);
+
+  const difficulties = useMemo(() => {
+    const unique = Array.from(new Set(languageFilteredTasks.map((task) => task.difficulty)));
+    return [ALL_FILTER, ...unique.sort()];
+  }, [languageFilteredTasks]);
+
+  const effectiveTagFilter =
+    tagFilter !== ALL_FILTER && !tags.includes(tagFilter) ? ALL_FILTER : tagFilter;
+  const effectiveDifficultyFilter =
+    difficultyFilter !== ALL_FILTER && !difficulties.includes(difficultyFilter)
+      ? ALL_FILTER
+      : difficultyFilter;
+
+  // Update URL when filters change
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (languageFilter !== ALL_FILTER) {
+      params.set('language', languageFilter);
+    }
+    if (effectiveTagFilter !== ALL_FILTER) {
+      params.set('tag', effectiveTagFilter);
+    }
+    if (effectiveDifficultyFilter !== ALL_FILTER) {
+      params.set('difficulty', effectiveDifficultyFilter);
+    }
+    const query = params.toString();
+    const url = query ? `/?${query}` : '/';
+    router.replace(url, { scroll: false });
+  }, [languageFilter, effectiveTagFilter, effectiveDifficultyFilter, router]);
+
+  const filteredTasks = useMemo(
+    () =>
+      languageFilteredTasks.filter((task) => {
+        if (effectiveTagFilter !== ALL_FILTER && !task.tags.includes(effectiveTagFilter)) {
+          return false;
+        }
+        if (
+          effectiveDifficultyFilter !== ALL_FILTER &&
+          task.difficulty !== effectiveDifficultyFilter
+        ) {
+          return false;
+        }
+        return true;
+      }),
+    [languageFilteredTasks, effectiveTagFilter, effectiveDifficultyFilter]
   );
 
   return (
     <div className="space-y-6">
       <section className="space-y-4">
+        <div>
+          <p className="text-xs font-semibold uppercase text-slate-500">Language / Framework / Product</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {languages.map((language) => (
+              <button
+                key={language}
+                type="button"
+                onClick={() => setLanguageFilter(language)}
+                className={`rounded-full border px-3 py-1 text-xs font-semibold transition cursor-pointer ${
+                  languageFilter === language
+                    ? 'border-violet-500 bg-violet-50 text-violet-700'
+                    : 'border-slate-200 text-slate-600 hover:border-violet-300 hover:text-violet-600'
+                }`}
+              >
+                {language}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div>
           <p className="text-xs font-semibold uppercase text-slate-500">Tag</p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -82,7 +142,7 @@ export default function TaskFilters({ tasks }: { tasks: Task[] }) {
                 type="button"
                 onClick={() => setTagFilter(tag)}
                 className={`rounded-full border px-3 py-1 text-xs font-semibold transition cursor-pointer ${
-                  tagFilter === tag
+                  effectiveTagFilter === tag
                     ? 'border-blue-500 bg-blue-50 text-blue-700'
                     : 'border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-600'
                 }`}
@@ -102,7 +162,7 @@ export default function TaskFilters({ tasks }: { tasks: Task[] }) {
                 type="button"
                 onClick={() => setDifficultyFilter(difficulty)}
                 className={`rounded-full border px-3 py-1 text-xs font-semibold transition cursor-pointer ${
-                  difficultyFilter === difficulty
+                  effectiveDifficultyFilter === difficulty
                     ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
                     : 'border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-600'
                 }`}

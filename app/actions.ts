@@ -6,19 +6,30 @@ import {
   generateTaskActionImpl,
 } from '@/app/actions-lib/task-actions';
 import type { TaskInput } from '@/app/actions-lib/schemas';
+import type { LearningConfig } from '@/lib/learning-config';
 
 // Next.js Server Actions in a `use server` file must be directly exported async functions.
 // Re-exporting action implementations from another module breaks this constraint.
 export async function checkSolution(
   userCode: string,
   taskTitle: string,
-  referenceSolution: string
+  referenceSolution: string,
+  config?: Pick<LearningConfig, 'aiMentorRole' | 'aiContentLanguage'> & {
+    languageName?: string;
+  }
 ) {
-  return checkSolutionImpl(userCode, taskTitle, referenceSolution);
+  return checkSolutionImpl(userCode, taskTitle, referenceSolution, config);
 }
 
-export async function generateTaskAction(topic: string): Promise<TaskInput> {
-  return generateTaskActionImpl(topic);
+export async function generateTaskAction(
+  topic: string,
+  config?: Pick<LearningConfig, 'aiMentorRole' | 'aiContentLanguage'> & {
+    languageName?: string;
+    defaultTag?: string;
+    codeFileExtension?: string;
+  }
+): Promise<TaskInput> {
+  return generateTaskActionImpl(topic, config);
 }
 
 export async function createTaskAction(input: TaskInput): Promise<{ slug: string }> {

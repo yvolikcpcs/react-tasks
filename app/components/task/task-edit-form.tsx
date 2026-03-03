@@ -5,11 +5,14 @@ import { useRouter } from 'next/navigation';
 import { Plus, Sparkles } from 'lucide-react';
 import { createTaskAction, generateTaskAction } from '@/app/actions';
 import type { Difficulty } from '@/lib/types/task';
+import type { LearningConfig } from '@/lib/learning-config';
+import { inferLanguageRuntime, inferLanguageTag } from '@/lib/language-utils';
 import Modal from '../ui/modal';
 import FormField from '../ui/form/form-field';
 import TextareaField from '../ui/form/textarea-field';
 
 type TaskFormData = {
+  languageName: string;
   title: string;
   description: string;
   hint: string;
@@ -19,21 +22,26 @@ type TaskFormData = {
   tags: string[];
 };
 
-const EMPTY_FORM: TaskFormData = {
+const createEmptyForm = (): TaskFormData => ({
+  languageName: '',
   title: '',
   description: '',
   hint: '',
   starterCode: '',
   referenceSolution: '',
   difficulty: 'medium',
-  tags: ['react'],
+  tags: [],
+});
+
+type TaskFormProps = {
+  config: Pick<LearningConfig, 'aiMentorRole' | 'aiContentLanguage'>;
 };
 
-export default function TaskForm() {
+export default function TaskForm({ config }: TaskFormProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [topic, setTopic] = useState('');
-  const [formData, setFormData] = useState<TaskFormData>(EMPTY_FORM);
+  const [formData, setFormData] = useState<TaskFormData>(createEmptyForm);
   const [loadingGenerate, setLoadingGenerate] = useState(false);
   const [loadingSave, setLoadingSave] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,13 +68,14 @@ export default function TaskForm() {
       .split(',')
       .map((tag) => tag.trim())
       .filter(Boolean);
-    setFormData((prev) => ({ ...prev, tags: nextTags.length > 0 ? nextTags : ['react'] }));
+    setFormData((prev) => ({ ...prev, tags: nextTags }));
   };
 
   const getMissingRequiredFields = () => {
     const missing: string[] = [];
 
     if (!formData.title.trim()) missing.push('Title');
+    if (!formData.languageName.trim()) missing.push('Programming Language');
     if (!formData.description.trim()) missing.push('Description');
     if (!formData.hint.trim()) missing.push('Hint');
     if (!formData.starterCode.trim()) missing.push('Starter Code');
@@ -83,7 +92,19 @@ export default function TaskForm() {
     setLoadingGenerate(true);
     setError(null);
     try {
-      const data = await generateTaskAction(topic);
+      const languageName = formData.languageName.trim();
+      if (!languageName) {
+        setError('Programming Language is required to generate a task.');
+        return;
+      }
+      const runtime = inferLanguageRuntime(languageName);
+      const data = await generateTaskAction(topic, {
+        aiMentorRole: config.aiMentorRole,
+        languageName,
+        aiContentLanguage: config.aiContentLanguage,
+        defaultTag: inferLanguageTag(languageName),
+        codeFileExtension: runtime.ext,
+      });
       form.reset(data);
     } catch (err) {
       console.error(err);
@@ -114,6 +135,9 @@ export default function TaskForm() {
     }
   };
 
+  const languageRuntime = inferLanguageRuntime(formData.languageName);
+  const languageLabel = formData.languageName || 'task';
+
   return (
     <>
       <button
@@ -122,12 +146,12 @@ export default function TaskForm() {
         className="inline-flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition-colors cursor-pointer"
       >
         <Plus className="h-4 w-4" />
-        Add Task
+        Add task
       </button>
 
       <Modal
         open={open}
-        title="Create React Task"
+        title={`Create ${languageLabel} task`}
         onClose={() => setOpen(false)}
         footer={
           <div className="flex items-center justify-end gap-3">
@@ -144,7 +168,7 @@ export default function TaskForm() {
               disabled={loadingSave || hasMissingRequiredFields}
               className="cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:bg-slate-400"
             >
-              {loadingSave ? 'Saving...' : 'Save Task'}
+              {loadingSave ? 'Saving...' : 'Save task'}
             </button>
           </div>
         }
@@ -159,7 +183,7 @@ export default function TaskForm() {
                 id="task-topic"
                 value={topic}
                 onChange={(event) => setTopic(event.target.value)}
-                placeholder="Example: useEffect cleanup and race conditions"
+                placeholder={`Example: ${languageLabel} arrays and control flow`}
                 className="w-full"
                 inputClassName="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500"
               />
@@ -174,6 +198,14 @@ export default function TaskForm() {
               </button>
             </div>
           </div>
+
+          <FormField
+            id="task-language-name"
+            label="Programming Language / Framework / Product"
+            value={formData.languageName}
+            onChange={(event) => updateField('languageName', event.target.value)}
+            required
+          />
 
           <FormField
             id="task-title"
@@ -229,7 +261,7 @@ export default function TaskForm() {
 
           <TextareaField
             id="task-starter-code"
-            label="Starter Code (TSX)"
+            label={`Starter Code (${languageRuntime.ext.toUpperCase()})`}
             value={formData.starterCode}
             onChange={(event) => updateField('starterCode', event.target.value)}
             rows={7}
@@ -239,7 +271,7 @@ export default function TaskForm() {
 
           <TextareaField
             id="task-reference-solution"
-            label="Reference Solution (TSX)"
+            label={`Reference Solution (${languageRuntime.ext.toUpperCase()})`}
             value={formData.referenceSolution}
             onChange={(event) => updateField('referenceSolution', event.target.value)}
             rows={7}

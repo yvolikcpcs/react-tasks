@@ -2,16 +2,23 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
+import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { signOutAction } from '@/app/auth/actions';
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "React Mentor AI",
-  description: "Simple React practice platform",
+  title: "Code Mentor AI",
+  description: "Practice programming tasks with AI feedback.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-slate-900`}>
@@ -23,6 +30,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Link>
             <div className="flex gap-4 text-sm font-medium">
               <Link href="/" className="text-slate-600 hover:text-slate-900">Home</Link>
+              {user ? (
+                <form action={signOutAction}>
+                  <button type="submit" className="cursor-pointer text-slate-600 hover:text-slate-900">
+                    Sign out
+                  </button>
+                </form>
+              ) : (
+                <Link href="/auth" className="text-slate-600 hover:text-slate-900">Sign in</Link>
+              )}
               <Link href="https://github.com/yvolikcpcs/react-tasks" className="text-slate-600 hover:text-slate-900">GitHub</Link>
             </div>
           </nav>
@@ -35,7 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         <footer className="border-t py-10 mt-auto">
           <p className="text-center text-slate-400 text-xs">
-            © {new Date().getFullYear()} React Mentor AI.
+            © {new Date().getFullYear()} Code Mentor AI.
           </p>
         </footer>
       </body>

@@ -8,6 +8,7 @@ export const RESPONSE_SCHEMA = z.object({
 });
 
 export const TASK_SCHEMA = z.object({
+  languageName: z.string().min(2).max(50),
   title: z.string().min(3).max(120),
   description: z.string().min(20),
   hint: z.string().min(10),

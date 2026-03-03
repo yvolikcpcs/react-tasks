@@ -8,6 +8,7 @@ type TaskRow = {
   tags: string[] | null;
   hint: string | null;
   content: {
+    languageName?: string;
     description?: string;
     starterCode?: string;
     referenceSolution?: string;
@@ -18,7 +19,7 @@ export async function getAllTasks() {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from('tasks')
-    .select('slug,title,difficulty,tags,hint')
+    .select('slug,title,difficulty,tags,content')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -29,6 +30,7 @@ export async function getAllTasks() {
   return rows.map((row) => ({
     slug: row.slug,
     title: row.title,
+    languageName: row.content?.languageName,
     difficulty: row.difficulty,
     tags: row.tags ?? [],
   }));
@@ -51,6 +53,7 @@ export async function getTaskBySlug(slug: string) {
   }
 
   const description = row.content?.description ?? 'No description provided.';
+  const languageName = row.content?.languageName ?? 'Programming Language';
   const starterCode = row.content?.starterCode ?? '// No starter code provided';
   const referenceSolution = row.content?.referenceSolution ?? '';
   const hint = row.hint ?? '';
@@ -60,6 +63,7 @@ export async function getTaskBySlug(slug: string) {
       title: row.title,
       difficulty: row.difficulty,
       tags: row.tags ?? [],
+      languageName,
       description,
       starterCode,
       referenceSolution,

@@ -2,14 +2,21 @@
 
 import { useMemo, useState } from 'react';
 import Editor from '@monaco-editor/react';
+import { MDXRemote, type MDXRemoteSerializeResult } from 'next-mdx-remote';
 import { checkSolution } from '@/app/actions';
 import { Loader2, CheckCircle2, XCircle, Lightbulb, RotateCcw } from 'lucide-react';
+import type { LearningConfig } from '@/lib/learning-config';
 
 interface TaskInteractiveProps {
   starterCode: string;
   taskTitle: string;
   solution: string;
   hint?: string;
+  config: Pick<LearningConfig, 'aiMentorRole' | 'aiContentLanguage'> & {
+    languageName: string;
+    codeEditorLanguage: string;
+    codeFileExtension: string;
+  };
 }
 
 /**
@@ -19,10 +26,17 @@ interface EvaluationResult {
   score: number;
   isCorrect: boolean;
   feedback: string;
+  feedbackMdx?: MDXRemoteSerializeResult;
   hints: string[];
 }
 
-export default function TaskInteractive({ starterCode, taskTitle, solution, hint }: TaskInteractiveProps) {
+export default function TaskInteractive({
+  starterCode,
+  taskTitle,
+  solution,
+  hint,
+  config,
+}: TaskInteractiveProps) {
   // --- State Management ---
   const [loading, setLoading] = useState(false);
   const [showHint, setShowHint] = useState(false);
@@ -41,7 +55,11 @@ export default function TaskInteractive({ starterCode, taskTitle, solution, hint
     setLoading(true);
     setError(null);
     try {
-      const evaluation = await checkSolution(code, taskTitle, solution);
+      const evaluation = await checkSolution(code, taskTitle, solution, {
+        aiMentorRole: config.aiMentorRole,
+        languageName: config.languageName,
+        aiContentLanguage: config.aiContentLanguage,
+      });
       setResult(evaluation);
     } catch (err) {
       setError('An error occurred during validation. Please try again.');
@@ -71,7 +89,9 @@ export default function TaskInteractive({ starterCode, taskTitle, solution, hint
             <div className="w-3 h-3 rounded-full bg-[#ffbd2e]" />
             <div className="w-3 h-3 rounded-full bg-[#27c93f]" />
           </div>
-          <span className="font-mono opacity-80">{taskTitle.toLowerCase().replace(/\s+/g, '_')}.jsx</span>
+          <span className="font-mono opacity-80">
+            {taskTitle.toLowerCase().replace(/\s+/g, '_')}.{config.codeFileExtension}
+          </span>
         </div>
         <button 
           onClick={resetCode}
@@ -85,7 +105,7 @@ export default function TaskInteractive({ starterCode, taskTitle, solution, hint
       {/* --- Monaco Editor Instance --- */}
       <Editor
         height="380px"
-        defaultLanguage="javascript"
+        language={config.codeEditorLanguage}
         theme="vs-dark"
         value={code}
         onChange={(v) => setCode(v || '')}
@@ -106,7 +126,7 @@ export default function TaskInteractive({ starterCode, taskTitle, solution, hint
       {/* --- Footer Action Bar --- */}
       <div className="p-4 bg-[#1e1e1e] border-t border-slate-800">
         <p className="text-sm text-slate-500 italic">
-          Use the &quot;Verify Solution&quot; button to get AI feedback on your code.
+          {`Use the "Verify Solution" button to get AI feedback on your ${config.languageName} code.`}
         </p>
         {showHint && (
           <p className="text-sm text-slate-500 italic">
@@ -161,7 +181,7 @@ export default function TaskInteractive({ starterCode, taskTitle, solution, hint
                   Score: {result.score}/100
                 </h3>
                 <p className="text-[10px] uppercase tracking-tighter text-slate-500 font-bold">
-                  AI Mentor Assessment
+                  {`${config.languageName} Mentor Assessment`}
                 </p>
               </div>
             </div>
@@ -170,15 +190,15 @@ export default function TaskInteractive({ starterCode, taskTitle, solution, hint
             </div>
           </div>
 
-          <p className="text-slate-300 text-sm leading-relaxed border-l-2 border-slate-700 pl-4 py-1">
-            {result.feedback}
-          </p>
+          <div className="prose prose-invert prose-sm max-w-none border-l-2 border-slate-700 pl-4 py-1 text-slate-300">
+            {result.feedbackMdx ? <MDXRemote {...result.feedbackMdx} /> : result.feedback}
+          </div>
 
           {!result.isCorrect && result.hints?.length > 0 && (
             <div className="mt-6 space-y-3">
               <div className="flex items-center gap-2 text-indigo-400 text-[10px] font-black uppercase tracking-widest">
                 <Lightbulb className="w-3 h-3" />
-                Development Roadmap
+                Improvement Roadmap
               </div>
               <div className="grid gap-2">
                 {result.hints.map((hint, i) => (

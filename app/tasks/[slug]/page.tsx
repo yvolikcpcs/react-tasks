@@ -6,6 +6,8 @@ import DifficultyBadge from '@/app/components/badge/difficulty-badge';
 import TagBadge from '@/app/components/badge/tag-badge';
 import { ChevronLeft, BookOpen } from 'lucide-react';
 import Link from 'next/link';
+import { learningConfig } from '@/lib/learning-config';
+import { inferLanguageRuntime } from '@/lib/language-utils';
 
 export default async function TaskPage({ params }: { params: Promise<{ slug: string }> }) {
     const slug = (await params)?.slug;
@@ -16,6 +18,7 @@ export default async function TaskPage({ params }: { params: Promise<{ slug: str
     }
 
     const { data } = task;
+    const runtime = inferLanguageRuntime(data.languageName);
 
     return (
         <article className="max-w-4xl mx-auto">
@@ -56,6 +59,12 @@ export default async function TaskPage({ params }: { params: Promise<{ slug: str
               taskTitle={data.title}
               solution={data.referenceSolution}
               hint={data.hint}
+              config={{
+                ...learningConfig,
+                languageName: data.languageName,
+                codeEditorLanguage: runtime.editor,
+                codeFileExtension: runtime.ext,
+              }}
             />
         </article>
     );
