@@ -23,15 +23,16 @@ export async function checkSolution(
 
 export async function generateTaskAction(
   topic: string,
+  captchaToken: string,
   config?: Pick<LearningConfig, 'aiMentorRole' | 'aiContentLanguage'> & {
     languageName?: string;
     defaultTag?: string;
     codeFileExtension?: string;
   }
 ): Promise<TaskInput> {
-  return generateTaskActionImpl(topic, config);
+  return generateTaskActionImpl(topic, captchaToken, config);
 }
 
-export async function createTaskAction(input: TaskInput): Promise<{ slug: string }> {
-  return createTaskActionImpl(input);
+export async function createTaskAction(input: TaskInput, captchaToken: string): Promise<{ slug: string }> {
+  return createTaskActionImpl(input, captchaToken);
 }

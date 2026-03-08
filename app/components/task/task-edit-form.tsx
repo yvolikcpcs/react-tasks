@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Sparkles } from 'lucide-react';
+import { Turnstile } from '@marsidev/react-turnstile';
 import { createTaskAction, generateTaskAction } from '@/app/actions';
 import type { Difficulty } from '@/lib/types/task';
 import type { LearningConfig } from '@/lib/learning-config';
@@ -88,7 +89,14 @@ export default function TaskForm({ config }: TaskFormProps) {
   const missingFields = getMissingRequiredFields();
   const hasMissingRequiredFields = missingFields.length > 0;
 
+  const turnstileRef = useRef<any>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+
   const handleGenerate = async () => {
+    if (!captchaToken) {
+      setError('Please verify you are human');
+      return;
+    }
     setLoadingGenerate(true);
     setError(null);
     try {
@@ -98,7 +106,7 @@ export default function TaskForm({ config }: TaskFormProps) {
         return;
       }
       const runtime = inferLanguageRuntime(languageName);
-      const data = await generateTaskAction(topic, {
+      const data = await generateTaskAction(topic, captchaToken!, {
         aiMentorRole: config.aiMentorRole,
         languageName,
         aiContentLanguage: config.aiContentLanguage,
@@ -111,10 +119,16 @@ export default function TaskForm({ config }: TaskFormProps) {
       setError('Failed to generate task. Please try again.');
     } finally {
       setLoadingGenerate(false);
+      setCaptchaToken(null);
+      turnstileRef.current?.reset();
     }
   };
 
   const handleSave = async () => {
+    if (!captchaToken) {
+      setError('Please verify you are human');
+      return;
+    }
     if (hasMissingRequiredFields) {
       setError(`Please fill all required fields: ${missingFields.join(', ')}.`);
       return;
@@ -123,13 +137,15 @@ export default function TaskForm({ config }: TaskFormProps) {
     setLoadingSave(true);
     setError(null);
     try {
-      const { slug } = await createTaskAction(formData);
+      const { slug } = await createTaskAction(formData, captchaToken!);
       setOpen(false);
       router.push(`/tasks/${slug}`);
       router.refresh();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create task.';
       setError(message);
+      setCaptchaToken(null);
+      turnstileRef.current?.reset();
     } finally {
       setLoadingSave(false);
     }
@@ -165,7 +181,7 @@ export default function TaskForm({ config }: TaskFormProps) {
             <button
               type="button"
               onClick={handleSave}
-              disabled={loadingSave || hasMissingRequiredFields}
+              disabled={loadingSave || !captchaToken || hasMissingRequiredFields}
               className="cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:bg-slate-400"
             >
               {loadingSave ? 'Saving...' : 'Save task'}
@@ -278,6 +294,15 @@ export default function TaskForm({ config }: TaskFormProps) {
             required
             textareaClassName="rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs text-slate-800 outline-none focus:border-blue-500"
           />
+
+          <div className="flex justify-center py-4 border-t border-slate-100">
+            <Turnstile
+              ref={turnstileRef}
+              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+              onSuccess={(token) => setCaptchaToken(token)}
+              onExpire={() => setCaptchaToken(null)}
+            />
+          </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>

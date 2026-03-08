@@ -9,6 +9,7 @@ import { checkSolutionRatelimit, generateTaskRatelimit } from './rate-limit';
 import { RESPONSE_SCHEMA, TASK_SCHEMA, type TaskInput } from './schemas';
 import type { LearningConfig } from '@/lib/learning-config';
 import { inferLanguageTag } from '@/lib/language-utils';
+import { verifyCaptcha } from './captcha';
 
 type CheckSolutionResult = {
   score: number;
@@ -92,12 +93,15 @@ Return score as an integer from 0 to 100 (not 0 to 1).`,
 
 export async function generateTaskActionImpl(
   topic: string,
+  captchaToken: string,
   config?: Pick<LearningConfig, 'aiMentorRole' | 'aiContentLanguage'> & {
     languageName?: string;
     defaultTag?: string;
     codeFileExtension?: string;
-  }
+  },
+
 ): Promise<TaskInput> {
+  await verifyCaptcha(captchaToken);
   await requireTaskCreatorRole();
 
   const identifier = await getRequestIdentifier();
@@ -144,7 +148,8 @@ Requirements:
   return TASK_SCHEMA.parse(generatedTask);
 }
 
-export async function createTaskActionImpl(input: TaskInput): Promise<{ slug: string }> {
+export async function createTaskActionImpl(input: TaskInput, captchaToken: string): Promise<{ slug: string }> {
+  await verifyCaptcha(captchaToken);
   const { supabase, user } = await requireTaskCreatorRole();
 
   const data = TASK_SCHEMA.parse(input);
