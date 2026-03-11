@@ -1,11 +1,10 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
-import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { FormEvent, useState } from 'react';
 import FormField from '@/app/components/ui/form/form-field';
+import { signInAction } from './actions';
 
 export default function SignInForm() {
-  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -17,22 +16,15 @@ export default function SignInForm() {
     setError(null);
     setMessage(null);
 
-    const redirectTo = `${window.location.origin}/auth/callback`;
-
-    const { error: signInError } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: {
-        emailRedirectTo: redirectTo,
-      },
-    });
-
-    if (signInError) {
-      setError(signInError.message);
-    } else {
+    try {
+      await signInAction(email.trim());
       setMessage('Check your email for the sign-in link.');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (

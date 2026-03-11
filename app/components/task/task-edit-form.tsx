@@ -1,110 +1,87 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Sparkles } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { createTaskAction, generateTaskAction } from '@/app/actions';
-import type { Difficulty } from '@/lib/types/task';
 import type { LearningConfig } from '@/lib/learning-config';
 import { inferLanguageRuntime, inferLanguageTag } from '@/lib/language-utils';
-import Modal from '../ui/modal';
-import FormField from '../ui/form/form-field';
-import TextareaField from '../ui/form/textarea-field';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { TASK_SCHEMA, type TaskInput } from '@/app/actions-lib/schemas';
+import Modal from '@/app/components/ui/modal';
+import FormField from '@/app/components/ui/form/form-field';
+import TextareaField from '@/app/components/ui/form/textarea-field';
 
-type TaskFormData = {
-  languageName: string;
-  title: string;
-  description: string;
-  hint: string;
-  starterCode: string;
-  referenceSolution: string;
-  difficulty: Difficulty;
-  tags: string[];
-};
-
-const createEmptyForm = (): TaskFormData => ({
-  languageName: '',
-  title: '',
-  description: '',
-  hint: '',
-  starterCode: '',
-  referenceSolution: '',
-  difficulty: 'medium',
-  tags: [],
-});
 
 type TaskFormProps = {
   config: Pick<LearningConfig, 'aiMentorRole' | 'aiContentLanguage'>;
+  isGuest: boolean;
 };
 
-export default function TaskForm({ config }: TaskFormProps) {
+interface TurnstileInstance {
+  reset: () => void;
+  getResponse: () => string;
+}
+
+export default function TaskForm({ config, isGuest }: TaskFormProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [topic, setTopic] = useState('');
-  const [formData, setFormData] = useState<TaskFormData>(createEmptyForm);
+  const [topicError, setTopicError] = useState<string | null>(null);
   const [loadingGenerate, setLoadingGenerate] = useState(false);
-  const [loadingSave, setLoadingSave] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const form = useMemo(
-    () => ({
-      reset: (data: TaskFormData) => {
-        setFormData(data);
-      },
-    }),
-    []
-  );
+  const {
+    register,
+    handleSubmit,
+    reset,
+    getValues,
+    setError,
+    clearErrors,
+    formState: { errors, isSubmitting },
+  } = useForm<TaskInput>({
+    resolver: zodResolver(TASK_SCHEMA),
+    defaultValues: {
+      difficulty: 'medium',
+      languageName: '',
+      title: '',
+      description: '',
+      tags: [],
+    },
+  });
 
-  const updateField = (field: keyof Omit<TaskFormData, 'tags'>, value: string) => {
-    if (field === 'difficulty') {
-      setFormData((prev) => ({ ...prev, difficulty: value as Difficulty }));
+  const handleOpenModal = () => {
+    if (isGuest) {
+      router.push('/auth');
       return;
     }
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setOpen(true);
   };
 
-  const updateTags = (value: string) => {
-    const nextTags = value
-      .split(',')
-      .map((tag) => tag.trim())
-      .filter(Boolean);
-    setFormData((prev) => ({ ...prev, tags: nextTags }));
-  };
-
-  const getMissingRequiredFields = () => {
-    const missing: string[] = [];
-
-    if (!formData.title.trim()) missing.push('Title');
-    if (!formData.languageName.trim()) missing.push('Programming Language');
-    if (!formData.description.trim()) missing.push('Description');
-    if (!formData.hint.trim()) missing.push('Hint');
-    if (!formData.starterCode.trim()) missing.push('Starter Code');
-    if (!formData.referenceSolution.trim()) missing.push('Reference Solution');
-    if (formData.tags.length === 0 || formData.tags.every((tag) => !tag.trim())) missing.push('Tags');
-
-    return missing;
-  };
-
-  const missingFields = getMissingRequiredFields();
-  const hasMissingRequiredFields = missingFields.length > 0;
-
-  const turnstileRef = useRef<any>(null);
+  const turnstileRef = useRef<TurnstileInstance>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   const handleGenerate = async () => {
-    if (!captchaToken) {
-      setError('Please verify you are human');
+    if (!topic.trim()) {
+      setTopicError('Please enter a topic first');
       return;
     }
+    
+    if (!captchaToken) {
+      setError('root', { message: 'Please verify you are human' });
+      return;
+    }
+
+    const languageName = getValues('languageName');
+    if (!languageName) {
+      setError('languageName', { message: 'Required for AI generation' });
+      return;
+    }
+  
     setLoadingGenerate(true);
-    setError(null);
+    setTopicError(null);
     try {
-      const languageName = formData.languageName.trim();
-      if (!languageName) {
-        setError('Programming Language is required to generate a task.');
-        return;
-      }
       const runtime = inferLanguageRuntime(languageName);
       const data = await generateTaskAction(topic, captchaToken!, {
         aiMentorRole: config.aiMentorRole,
@@ -113,10 +90,11 @@ export default function TaskForm({ config }: TaskFormProps) {
         defaultTag: inferLanguageTag(languageName),
         codeFileExtension: runtime.ext,
       });
-      form.reset(data);
+      reset(data);
+      setTopic('');
     } catch (err) {
       console.error(err);
-      setError('Failed to generate task. Please try again.');
+      setError('root', { message: 'Failed to generate task. Please try again.' });
     } finally {
       setLoadingGenerate(false);
       setCaptchaToken(null);
@@ -124,41 +102,34 @@ export default function TaskForm({ config }: TaskFormProps) {
     }
   };
 
-  const handleSave = async () => {
+  const onSubmit = async (data: TaskInput) => {
     if (!captchaToken) {
-      setError('Please verify you are human');
+      setError('root', { message: 'Please verify you are human' });
       return;
     }
-    if (hasMissingRequiredFields) {
-      setError(`Please fill all required fields: ${missingFields.join(', ')}.`);
-      return;
-    }
-
-    setLoadingSave(true);
-    setError(null);
+    clearErrors();
     try {
-      const { slug } = await createTaskAction(formData, captchaToken!);
+      const { slug } = await createTaskAction(data, captchaToken!);
       setOpen(false);
       router.push(`/tasks/${slug}`);
       router.refresh();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create task.';
-      setError(message);
+    }  catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setError('root', { message: errorMessage });
+      
       setCaptchaToken(null);
       turnstileRef.current?.reset();
-    } finally {
-      setLoadingSave(false);
     }
   };
 
-  const languageRuntime = inferLanguageRuntime(formData.languageName);
-  const languageLabel = formData.languageName || 'task';
+  const languageLabel = getValues('languageName') || 'task';
+  const languageRuntime = inferLanguageRuntime(getValues('languageName'));
 
   return (
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={handleOpenModal}
         className="inline-flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 transition-colors cursor-pointer"
       >
         <Plus className="h-4 w-4" />
@@ -180,11 +151,11 @@ export default function TaskForm({ config }: TaskFormProps) {
             </button>
             <button
               type="button"
-              onClick={handleSave}
-              disabled={loadingSave || !captchaToken || hasMissingRequiredFields}
+              onClick={handleSubmit(onSubmit)}
+              disabled={isSubmitting || !captchaToken}
               className="cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:bg-slate-400"
             >
-              {loadingSave ? 'Saving...' : 'Save task'}
+              {isSubmitting ? 'Saving...' : 'Save task'}
             </button>
           </div>
         }
@@ -195,14 +166,18 @@ export default function TaskForm({ config }: TaskFormProps) {
               Topic for AI Generation
             </label>
             <div className="flex gap-2">
-              <FormField
-                id="task-topic"
-                value={topic}
-                onChange={(event) => setTopic(event.target.value)}
-                placeholder={`Example: ${languageLabel} arrays and control flow`}
-                className="w-full"
-                inputClassName="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500"
-              />
+            <FormField
+              id="task-topic"
+              value={topic}
+              onChange={(e) => {
+                setTopic(e.target.value);
+                setTopicError(null);
+              }}
+              error={topicError || undefined}
+              placeholder={`Example: ${languageLabel} arrays and control flow`}
+              className="w-full"
+              inputClassName="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500"
+            />
               <button
                 type="button"
                 onClick={handleGenerate}
@@ -218,35 +193,31 @@ export default function TaskForm({ config }: TaskFormProps) {
           <FormField
             id="task-language-name"
             label="Programming Language / Framework / Product"
-            value={formData.languageName}
-            onChange={(event) => updateField('languageName', event.target.value)}
-            required
+            error={errors.languageName?.message}
+            {...register('languageName')}
           />
 
           <FormField
             id="task-title"
             label="Title"
-            value={formData.title}
-            onChange={(event) => updateField('title', event.target.value)}
-            required
+            error={errors.title?.message}
+            {...register('title')}
           />
 
           <TextareaField
             id="task-description"
             label="Description (Markdown)"
-            value={formData.description}
-            onChange={(event) => updateField('description', event.target.value)}
+            error={errors.description?.message}
+            {...register('description')}
             rows={5}
-            required
           />
 
           <TextareaField
             id="task-hint"
             label="Hint"
-            value={formData.hint}
-            onChange={(event) => updateField('hint', event.target.value)}
+            error={errors.hint?.message}
+            {...register('hint')}
             rows={2}
-            required
           />
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -256,9 +227,7 @@ export default function TaskForm({ config }: TaskFormProps) {
               </label>
               <select
                 id="task-difficulty"
-                value={formData.difficulty}
-                onChange={(event) => updateField('difficulty', event.target.value)}
-                required
+                {...register('difficulty')}
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500"
               >
                 <option value="easy">easy</option>
@@ -269,31 +238,34 @@ export default function TaskForm({ config }: TaskFormProps) {
             <FormField
               id="task-tags"
               label="Tags (comma-separated)"
-              value={formData.tags.join(', ')}
-              onChange={(event) => updateTags(event.target.value)}
-              required
+              error={errors.tags?.message}
+              {...register('tags')}
             />
           </div>
 
           <TextareaField
             id="task-starter-code"
             label={`Starter Code (${languageRuntime.ext.toUpperCase()})`}
-            value={formData.starterCode}
-            onChange={(event) => updateField('starterCode', event.target.value)}
+            error={errors.starterCode?.message}
+            {...register('starterCode')}
             rows={7}
-            required
             textareaClassName="rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs text-slate-800 outline-none focus:border-blue-500"
           />
 
           <TextareaField
             id="task-reference-solution"
             label={`Reference Solution (${languageRuntime.ext.toUpperCase()})`}
-            value={formData.referenceSolution}
-            onChange={(event) => updateField('referenceSolution', event.target.value)}
+            error={errors.referenceSolution?.message}
+            {...register('referenceSolution')}
             rows={7}
-            required
             textareaClassName="rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs text-slate-800 outline-none focus:border-blue-500"
           />
+
+          {errors.root && (
+            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-600 font-medium animate-in fade-in zoom-in duration-200">
+              ⚠️ {errors.root.message}
+            </div>
+          )}
 
           <div className="flex justify-center py-4 border-t border-slate-100">
             <Turnstile
@@ -303,8 +275,6 @@ export default function TaskForm({ config }: TaskFormProps) {
               onExpire={() => setCaptchaToken(null)}
             />
           </div>
-
-          {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
       </Modal>
     </>

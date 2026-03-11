@@ -38,3 +38,12 @@ export const generateTaskRatelimit = new Ratelimit({
   analytics: true,
   prefix: '@upstash/ratelimit:generate-task',
 });
+
+export const signInRatelimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(
+    getNumberEnv('RATE_LIMIT_SIGN_IN_LIMIT', 1),
+    getWindowEnv('RATE_LIMIT_SIGN_IN_WINDOW', '60 s')),
+  analytics: true,
+  prefix: '@upstash/ratelimit:sign-in',
+});

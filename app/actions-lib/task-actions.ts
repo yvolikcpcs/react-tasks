@@ -3,7 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { serialize } from 'next-mdx-remote/serialize';
 import type { MDXRemoteSerializeResult } from 'next-mdx-remote';
 import { mentorModel } from './ai-client';
-import { getRequestIdentifier, requireTaskCreatorRole } from './auth';
+import { getRequestIdentifier, requireAuthenticatedUser } from './auth';
 import { isSlugConflict, slugify } from './helpers';
 import { checkSolutionRatelimit, generateTaskRatelimit } from './rate-limit';
 import { RESPONSE_SCHEMA, TASK_SCHEMA, type TaskInput } from './schemas';
@@ -102,7 +102,7 @@ export async function generateTaskActionImpl(
 
 ): Promise<TaskInput> {
   await verifyCaptcha(captchaToken);
-  await requireTaskCreatorRole();
+  await requireAuthenticatedUser();
 
   const identifier = await getRequestIdentifier();
   const { success, reset } = await generateTaskRatelimit.limit(identifier);
@@ -150,7 +150,7 @@ Requirements:
 
 export async function createTaskActionImpl(input: TaskInput, captchaToken: string): Promise<{ slug: string }> {
   await verifyCaptcha(captchaToken);
-  const { supabase, user } = await requireTaskCreatorRole();
+  const { supabase, user } = await requireAuthenticatedUser();
 
   const data = TASK_SCHEMA.parse(input);
   const baseSlug = slugify(data.title);

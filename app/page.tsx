@@ -2,11 +2,12 @@ import { getAllTasks } from '@/lib/supabase-tasks';
 import TaskFilters from '@/app/components/task/task-filters';
 import TaskEditForm from '@/app/components/task/task-edit-form';
 import { learningConfig } from '@/lib/learning-config';
-import { isCurrentUserAllowedToCreateTasks } from '@/app/actions-lib/auth';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 
 export default async function Home() {
-  const canCreateTasks = await isCurrentUserAllowedToCreateTasks();
   const tasks = await getAllTasks();
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
   return (
     <div className="space-y-8">
@@ -15,13 +16,7 @@ export default async function Home() {
           <h1 className="text-3xl font-bold tracking-tight">Programming Challenges</h1>
           <p className="text-slate-500 mt-2">Pick a task and start coding with AI feedback.</p>
         </div>
-        {canCreateTasks ? (
-          <TaskEditForm config={learningConfig} />
-        ) : (
-          <p className="text-xs text-slate-500">
-            Task creation is available for creator/admin accounts only.
-          </p>
-        )}
+        <TaskEditForm config={learningConfig} isGuest={!user}/>
       </div>
 
       <TaskFilters tasks={tasks} />
