@@ -1,0 +1,55 @@
+name: Vercel Production Deployment
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  Deploy-Production:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Checkout the repository to the runner
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Set up Node.js environment with caching for faster builds
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      # 3. Install dependencies using 'npm ci' for a clean, deterministic install
+      - name: Install Dependencies
+        run: npm ci
+
+      # 4. Run the linting script from package.json
+      # If this fails, the workflow stops here
+      - name: Run Lint
+        run: npm run lint
+
+      # 5. Run TypeScript compiler to ensure no type errors or 'any' violations
+      # This is the "ultimate shield" for your production code
+      - name: Type Check
+        run: npx tsc --noEmit
+
+      # 6. Install the Vercel CLI globally on the runner
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      # 7. Link the project and pull production environment variables
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      # 8. Build the project artifacts locally on GitHub runner
+      - name: Build Project Artifacts
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      # 9. Deploy the prebuilt artifacts to Vercel production
+      - name: Deploy Project Artifacts to Vercel
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
