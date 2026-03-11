@@ -36,7 +36,7 @@ jobs:
       # 5. Run TypeScript compiler to ensure no type errors or 'any' violations
       # This is the "ultimate shield" for your production code
       - name: Type Check
-        run: npx tsc --noEmit
+        run: npm run type-check
 
       # 6. Install the Vercel CLI globally on the runner
       - name: Install Vercel CLI

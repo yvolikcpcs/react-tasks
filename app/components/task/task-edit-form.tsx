@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Sparkles } from 'lucide-react';
-import { Turnstile } from '@marsidev/react-turnstile';
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { createTaskAction, generateTaskAction } from '@/app/actions';
 import type { LearningConfig } from '@/lib/learning-config';
 import { inferLanguageRuntime, inferLanguageTag } from '@/lib/language-utils';
@@ -19,11 +19,6 @@ type TaskFormProps = {
   config: Pick<LearningConfig, 'aiMentorRole' | 'aiContentLanguage'>;
   isGuest: boolean;
 };
-
-interface TurnstileInstance {
-  reset: () => void;
-  getResponse: () => string;
-}
 
 export default function TaskForm({ config, isGuest }: TaskFormProps) {
   const router = useRouter();
