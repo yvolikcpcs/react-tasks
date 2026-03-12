@@ -33,6 +33,9 @@ jobs:
       - name: Run Lint
         run: npm run lint
 
+      - name: Run Unit Tests
+        run: npm test -- --run
+
       # 5. Run TypeScript compiler to ensure no type errors or 'any' violations
       # This is the "ultimate shield" for your production code
       - name: Type Check
