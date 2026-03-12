@@ -32,11 +32,12 @@ npm install
 ### 2. Environment Configuration
 Create a `.env.local` file in the root directory. Use `.env.example` as a template:
 - `GOOGLE_GENERATIVE_AI_API_KEY` (from Google AI Studio)
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `UPSTASH_REDIS_REST_URL`
 - `UPSTASH_REDIS_REST_TOKEN`
 - `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
+- `NEXT_PUBLIC_SITE_URL`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
 ### 3. Database Migration
 Run the SQL scripts located in `supabase/sql/` sequentially (001 to 006) in your Supabase SQL Editor to set up schemas, roles, and RLS policies.
