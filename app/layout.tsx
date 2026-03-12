@@ -4,6 +4,7 @@ import "./globals.css";
 import Link from "next/link";
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { signOutAction } from '@/app/auth/actions';
+import { Analytics } from "@vercel/analytics/react"
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -54,6 +55,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             © {new Date().getFullYear()} Code Mentor AI.
           </p>
         </footer>
+        <Analytics />
       </body>
     </html>
   );
