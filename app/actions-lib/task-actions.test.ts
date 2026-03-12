@@ -6,6 +6,8 @@ import { TaskInput } from './schemas';
 import { SupabaseClient, User } from '@supabase/supabase-js';
 import { generateText } from 'ai';
 
+type GenerateTextResult = Awaited<ReturnType<typeof generateText>>;
+
 // 1. Mock the module
 vi.mock('./auth', () => ({
   getRequestIdentifier: vi.fn(() => 'test-ip-address'),
@@ -124,7 +126,7 @@ describe('generateTaskActionImpl', () => {
     // Mock AI SDK response
     mockedGenerateText.mockResolvedValueOnce({
       output: mockAIResponse,
-    } as any);
+    } as unknown as GenerateTextResult);
 
     const result = await generateTaskActionImpl(
       'React Hooks',
@@ -144,7 +146,7 @@ describe('generateTaskActionImpl', () => {
         title: 'Short description task',
         description: 'Too short', 
       },
-    } as any);
+    } as unknown as GenerateTextResult);
 
     await expect(
       generateTaskActionImpl('Topic', 'token', mockConfig)
