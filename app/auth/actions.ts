@@ -17,12 +17,17 @@ export async function signInAction(email: string) {
   }
 
   const supabase = await createSupabaseServerClient();
-  const origin = (await headers()).get('origin');
+
+  const headerList = await headers();
+  const origin = headerList.get('origin');
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || origin;
+  const redirectTo = `${siteUrl}/auth/callback`;
 
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${origin}/auth/callback`,
+      emailRedirectTo: redirectTo,
     },
   });
 
