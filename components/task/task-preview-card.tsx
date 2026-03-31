@@ -1,7 +1,7 @@
 import Link from 'next/link';
-import DifficultyBadge from '@/app/components/badge/difficulty-badge';
-import LanguageBadge from '@/app/components/badge/language-badge';
-import TagBadge from '@/app/components/badge/tag-badge';
+import DifficultyBadge from '@/components/badge/difficulty-badge';
+import LanguageBadge from '@/components/badge/language-badge';
+import TagBadge from '@/components/badge/tag-badge';
 import type { Difficulty, Task } from '@/lib/types/task';
 
 export type TaskCardData = Task & {

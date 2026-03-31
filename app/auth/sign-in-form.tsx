@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
-import FormField from '@/app/components/ui/form/form-field';
+import FormField from '@/components/ui/form/form-field';
 import { signInAction } from './actions';
 
 export default function SignInForm() {

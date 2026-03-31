@@ -1,6 +1,6 @@
 import { getAllTasks } from '@/lib/supabase-tasks';
-import TaskFilters from '@/app/components/task/task-filters';
-import TaskEditForm from '@/app/components/task/task-edit-form';
+import TaskFilters from '@/components/task/task-filters';
+import TaskEditForm from '@/components/task/task-edit-form';
 import { learningConfig } from '@/lib/learning-config';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 

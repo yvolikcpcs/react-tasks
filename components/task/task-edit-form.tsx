@@ -10,9 +10,9 @@ import { inferLanguageRuntime, inferLanguageTag } from '@/lib/language-utils';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { TASK_SCHEMA, type TaskInput } from '@/app/actions-lib/schemas';
-import Modal from '@/app/components/ui/modal';
-import FormField from '@/app/components/ui/form/form-field';
-import TextareaField from '@/app/components/ui/form/textarea-field';
+import Modal from '@/components/ui/modal';
+import FormField from '@/components/ui/form/form-field';
+import TextareaField from '@/components/ui/form/textarea-field';
 
 
 type TaskFormProps = {

@@ -1,6 +1,6 @@
 import { Tag } from 'lucide-react';
 import Link from 'next/link';
-import BadgePill from '@/app/components/ui/badge-pill';
+import BadgePill from '@/components/ui/badge-pill';
 
 type TagBadgeProps = {
   tag: string;

@@ -1,9 +1,9 @@
 import { getTaskBySlug } from '@/lib/supabase-tasks';
 import { MDXRemote } from 'next-mdx-remote/rsc';
 import { notFound } from 'next/navigation';
-import TaskInteractive from '@/app/components/task/task-interactive';
-import DifficultyBadge from '@/app/components/badge/difficulty-badge';
-import TagBadge from '@/app/components/badge/tag-badge';
+import TaskInteractive from '@/components/task/task-interactive';
+import DifficultyBadge from '@/components/badge/difficulty-badge';
+import TagBadge from '@/components/badge/tag-badge';
 import { ChevronLeft, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { learningConfig } from '@/lib/learning-config';

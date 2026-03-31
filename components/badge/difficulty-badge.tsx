@@ -1,7 +1,7 @@
 import { BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 import { getDifficultyColor } from '@/lib/style-utils';
-import BadgePill from '@/app/components/ui/badge-pill';
+import BadgePill from '@/components/ui/badge-pill';
 
 type DifficultyBadgeProps = {
   difficulty: string;
