@@ -30,6 +30,9 @@ const LANGUAGE_ALIASES: Record<string, { editor: string; ext: string }> = {
   vue: { editor: 'javascript', ext: 'vue' },
   angular: { editor: 'typescript', ext: 'ts' },
   svelte: { editor: 'javascript', ext: 'svelte' },
+  html5: { editor: 'html', ext: 'html' },
+  html: { editor: 'html', ext: 'html' },
+  css: { editor: 'css', ext: 'css' },
 };
 
 const normalize = (languageName: string) => languageName.trim().toLowerCase();

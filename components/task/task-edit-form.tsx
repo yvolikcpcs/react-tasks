@@ -9,7 +9,7 @@ import type { LearningConfig } from '@/lib/learning-config';
 import { inferLanguageRuntime, inferLanguageTag } from '@/lib/language-utils';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { TASK_SCHEMA, type TaskInput } from '@/app/actions-lib/schemas';
+import { TASK_SCHEMA, TaskFormValues, type TaskInput } from '@/app/actions-lib/schemas';
 import Modal from '@/components/ui/modal';
 import FormField from '@/components/ui/form/form-field';
 import TextareaField from '@/components/ui/form/textarea-field';
@@ -35,14 +35,17 @@ export default function TaskForm({ config, isGuest }: TaskFormProps) {
     setError,
     clearErrors,
     formState: { errors, isSubmitting },
-  } = useForm<TaskInput>({
+  } = useForm<TaskFormValues>({
     resolver: zodResolver(TASK_SCHEMA),
     defaultValues: {
       difficulty: 'medium',
       languageName: '',
       title: '',
       description: '',
-      tags: [],
+      hint: '',
+      starterCode: '',
+      referenceSolution: '',
+      tags: '',
     },
   });
 
@@ -168,7 +171,10 @@ export default function TaskForm({ config, isGuest }: TaskFormProps) {
             </button>
             <button
               type="button"
-              onClick={handleSubmit(onSubmit)}
+              onClick={() => {
+                clearErrors();
+                handleSubmit((data) => onSubmit(data as TaskInput))();
+              }}
               disabled={loadingGenerate || isSubmitting || !captchaToken}
               className="cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:bg-slate-400"
             >
