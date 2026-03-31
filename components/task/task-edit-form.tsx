@@ -117,6 +117,28 @@ export default function TaskForm({ config, isGuest }: TaskFormProps) {
     }
   };
 
+  const handleClose = () => {
+    setOpen(false);
+    
+    reset({
+      difficulty: 'medium',
+      languageName: '',
+      title: '',
+      description: '',
+      hint: '',
+      starterCode: '',
+      referenceSolution: '',
+      tags: [],
+    }); 
+    
+    setTopic('');
+    setTopicError(null);
+    setCaptchaToken(null);
+    clearErrors();
+    
+    turnstileRef.current?.reset();
+  };
+
   const languageLabel = getValues('languageName') || 'task';
   const languageRuntime = inferLanguageRuntime(getValues('languageName'));
 
@@ -134,12 +156,12 @@ export default function TaskForm({ config, isGuest }: TaskFormProps) {
       <Modal
         open={open}
         title={`Create ${languageLabel} task`}
-        onClose={() => setOpen(false)}
+        onClose={handleClose}
         footer={
           <div className="flex items-center justify-end gap-3">
             <button
               type="button"
-              onClick={() => setOpen(false)}
+              onClick={handleClose}
               className="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
               Cancel
@@ -147,7 +169,7 @@ export default function TaskForm({ config, isGuest }: TaskFormProps) {
             <button
               type="button"
               onClick={handleSubmit(onSubmit)}
-              disabled={isSubmitting || !captchaToken}
+              disabled={loadingGenerate || isSubmitting || !captchaToken}
               className="cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:bg-slate-400"
             >
               {isSubmitting ? 'Saving...' : 'Save task'}

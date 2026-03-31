@@ -15,7 +15,12 @@ export const TASK_SCHEMA = z.object({
   starterCode: z.string().min(20),
   referenceSolution: z.string().min(20),
   difficulty: z.enum(['easy', 'medium', 'hard']),
-  tags: z.array(z.string().min(1)).min(1),
+  tags: z.preprocess((val) => {
+    if (typeof val === 'string') {
+      return val.split(',').map(t => t.trim()).filter(Boolean);
+    }
+    return val;
+  }, z.array(z.string().min(1)).min(1, "Add at least one tag")),
 });
 
 export type TaskInput = z.infer<typeof TASK_SCHEMA>;

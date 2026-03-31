@@ -171,7 +171,7 @@ export async function createTaskActionImpl(input: TaskInput, captchaToken: strin
       hint: data.hint,
       created_by: user.id,
       content: {
-        languageName: data.languageName,
+        languageName: data.languageName.trim(),
         description: data.description,
         starterCode: data.starterCode,
         referenceSolution: data.referenceSolution,
