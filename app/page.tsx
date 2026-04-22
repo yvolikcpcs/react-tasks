@@ -1,13 +1,26 @@
-import { getAllTasks } from '@/lib/supabase-tasks';
+// app/page.tsx
+import { getFilterMetadata, getTasksPaginated } from '@/lib/supabase-tasks';
 import TaskFilters from '@/components/task/task-filters';
 import TaskEditForm from '@/components/task/task-edit-form';
+import TaskList from '@/components/task/task-list';
 import { learningConfig } from '@/lib/learning-config';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { TaskFiltersParams } from '@/lib/types/task';
 
-export default async function Home() {
-  const tasks = await getAllTasks();
+export default async function Home({ 
+  searchParams 
+}: { 
+  searchParams: Promise<TaskFiltersParams> 
+}) {
+  const params = await searchParams;
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
+
+  // Parallel fetch: current tasks and dynamic filter options
+  const [initialTasks, metadata] = await Promise.all([
+    getTasksPaginated(10, 0, params),
+    getFilterMetadata()
+  ]);
 
   return (
     <div className="space-y-8">
@@ -19,7 +32,14 @@ export default async function Home() {
         <TaskEditForm config={learningConfig} isGuest={!user}/>
       </div>
 
-      <TaskFilters tasks={tasks} />
+      {/* Pass the dynamically fetched languages and tags */}
+      <TaskFilters 
+        languages={metadata.languages} 
+        tags={metadata.tags} 
+      />
+
+      {/* This component handles the "Show more" logic and initial data display */}
+      <TaskList initialTasks={initialTasks} />
     </div>
   );
 }

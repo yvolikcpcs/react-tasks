@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Sparkles } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { createTaskAction, generateTaskAction } from '@/app/actions';
 import type { LearningConfig } from '@/lib/learning-config';
@@ -13,6 +13,8 @@ import { TASK_SCHEMA, TaskFormValues, type TaskInput } from '@/app/actions-lib/s
 import Modal from '@/components/ui/modal';
 import FormField from '@/components/ui/form/form-field';
 import TextareaField from '@/components/ui/form/textarea-field';
+import { GenerateButton } from './form/generate-button';
+import { SaveButton } from './form/save-button';
 
 
 type TaskFormProps = {
@@ -169,47 +171,36 @@ export default function TaskForm({ config, isGuest }: TaskFormProps) {
             >
               Cancel
             </button>
-            <button
-              type="button"
-              onClick={() => {
+            <SaveButton disabled={isSubmitting || loadingGenerate || !captchaToken} loading={isSubmitting} onClick={() => {
                 clearErrors();
                 handleSubmit((data) => onSubmit(data as TaskInput))();
-              }}
-              disabled={loadingGenerate || isSubmitting || !captchaToken}
-              className="cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:bg-slate-400"
-            >
-              {isSubmitting ? 'Saving...' : 'Save task'}
-            </button>
+            }} />
           </div>
         }
       >
-        <div className="space-y-4">
+        <div
+          className={`space-y-4 transition-opacity duration-300 ${
+          loadingGenerate ? 'opacity-50 pointer-events-none' : 'opacity-100'
+          }`}
+        >
           <div className="grid gap-2">
             <label htmlFor="task-topic" className="text-sm font-semibold text-slate-700">
               Topic for AI Generation
             </label>
-            <div className="flex gap-2">
-            <FormField
-              id="task-topic"
-              value={topic}
-              onChange={(e) => {
-                setTopic(e.target.value);
-                setTopicError(null);
-              }}
-              error={topicError || undefined}
-              placeholder={`Example: ${languageLabel} arrays and control flow`}
-              className="w-full"
-              inputClassName="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500"
-            />
-              <button
-                type="button"
-                onClick={handleGenerate}
-                disabled={loadingGenerate}
-                className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:bg-slate-400"
-              >
-                <Sparkles className="h-4 w-4" />
-                {loadingGenerate ? 'Generating...' : 'Generate'}
-              </button>
+            <div className="flex gap-2 items-start">
+              <FormField
+                id="task-topic"
+                value={topic}
+                onChange={(e) => {
+                  setTopic(e.target.value);
+                  setTopicError(null);
+                }}
+                error={topicError || undefined}
+                placeholder={`Example: ${languageLabel} arrays and control flow`}
+                className="w-full"
+                inputClassName="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500"
+              />
+              <GenerateButton onClick={handleGenerate} loading={loadingGenerate} />
             </div>
           </div>
 

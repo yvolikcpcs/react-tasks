@@ -7,3 +7,9 @@ export type Task = {
   difficulty?: Difficulty;
   tags?: string[];
 };
+
+export interface TaskFiltersParams {
+  language?: string;
+  difficulty?: string;
+  tag?: string;
+}
