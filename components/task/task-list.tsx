@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { loadMoreTasksAction } from '@/app/actions';
 import TaskCard, { type TaskCardData } from './task-preview-card';
@@ -14,13 +14,6 @@ export default function TaskList({ initialTasks }: { initialTasks: TaskCardData[
   const [tasks, setTasks] = useState(initialTasks);
   const [offset, setOffset] = useState(initialTasks.length);
   const [hasMore, setHasMore] = useState(initialTasks.length >= PAGE_SIZE);
-
-  // Sync state when server-side initialTasks change (on filter change)
-  useEffect(() => {
-    setTasks(initialTasks);
-    setOffset(initialTasks.length);
-    setHasMore(initialTasks.length >= PAGE_SIZE);
-  }, [initialTasks]);
 
   const handleLoadMore = () => {
     const filters = {

@@ -14,7 +14,7 @@ const DIFFICULTIES = ['All', 'Easy', 'Medium', 'Hard'];
 export default function TaskFilters({ languages, tags }: TaskFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   const currentLanguage = searchParams.get('language') || 'All';
   const currentDifficulty = searchParams.get('difficulty') || 'All';
@@ -36,7 +36,7 @@ export default function TaskFilters({ languages, tags }: TaskFiltersProps) {
   };
 
   return (
-    <section className={`space-y-6 ${isPending ? 'opacity-50' : 'opacity-100'}`}>
+    <section className={`space-y-6`}>
       {/* Language Filter */}
       <div>
         <p className="text-xs font-semibold uppercase text-slate-500">Language / Framework</p>
