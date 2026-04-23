@@ -10,7 +10,7 @@
     "type-check": "tsc --noEmit",
     "test": "vitest",
     "prepare": "husky",
-    "code-dump": "npx repomix@latest --ignore 'node_modules/**,dist/**,.next/**,.vercel/**,app/**,supabase/**,lib/**,components/**,tsconfig.tsbuildinfo'"
+    "code-dump": "npx repomix@latest --ignore 'node_modules/**,dist/**,.next/**,.vercel/**,app/**,supabase/**,,tsconfig.tsbuildinfo'"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

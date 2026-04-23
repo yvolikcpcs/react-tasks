@@ -27,7 +27,7 @@ export default async function Home({
   const { data: { user } } = await supabase.auth.getUser();
 
   // Fast fetch: metadata for filters
-  const metadata = await getFilterMetadata();
+  const metadata = await getFilterMetadata(params);
 
   return (
     <div className="space-y-8">

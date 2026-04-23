@@ -72,8 +72,6 @@ export async function getTaskBySlug(slug: string) {
   };
 }
 
-// lib/supabase-tasks.ts
-
 export async function getTasksPaginated(
   limit = 10, 
   offset = 0, 
@@ -116,32 +114,55 @@ export async function getTasksPaginated(
   }));
 }
 
-// lib/supabase-tasks.ts
+/**
+ * Metadata structure for filtering tasks
+ */
+interface TagMetadata {
+  name: string;
+  count: number;
+}
 
-export async function getFilterMetadata() {
+export async function getFilterMetadata(params: TaskFiltersParams = {}) {
   const supabase = await createSupabaseServerClient();
 
-  // Fetch only the columns we need to build filters
+  // We fetch all tasks to have global counts for languages and difficulty,
+  // but we will count tags conditionally.
   const { data, error } = await supabase
     .from('tasks')
-    .select('tags, content');
+    .select('tags, content, difficulty');
 
   if (error) {
     console.error("Error fetching filter metadata:", error);
-    return { languages: [], tags: [] };
+    return { languages: {}, tags: {} };
   }
 
-  // Extract unique languages from the JSONB 'content' field
-  const languages = Array.from(new Set(
-    data
-      .map(row => row.content?.languageName)
-      .filter((lang): lang is string => !!lang && lang.trim() !== "")
-  )).sort();
+  const languages: Record<string, number> = {};
+  const tags: Record<string, number> = {};
+  
+  // Note: Difficulty levels are usually static, 
+  // but we can count them too if needed.
 
-  // Flatten and extract unique tags from the string array
-  const tags = Array.from(new Set(
-    data.flatMap(row => row.tags || [])
-  )).sort();
+  data.forEach(row => {
+    // 1. Always count languages (Global counts)
+    const lang = row.content?.languageName;
+    if (lang) {
+      languages[lang] = (languages[lang] || 0) + 1;
+    }
+
+    // 2. Count tags ONLY if the task matches selected Language and Difficulty
+    const matchesLanguage = !params.language || params.language === 'All' || lang === params.language;
+    const matchesDifficulty = !params.difficulty || params.difficulty === 'All' || row.difficulty === params.difficulty;
+
+    if (matchesLanguage && matchesDifficulty) {
+      if (Array.isArray(row.tags)) {
+        row.tags.forEach((tag: string) => {
+          if (tag) {
+            tags[tag] = (tags[tag] || 0) + 1;
+          }
+        });
+      }
+    }
+  });
 
   return { languages, tags };
 }
