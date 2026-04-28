@@ -4,10 +4,20 @@ import { useState, useTransition } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { loadMoreTasksAction } from '@/app/actions';
 import TaskCard, { type TaskCardData } from './task-preview-card';
+import TaskListSkeleton from './task-list-skeleton';
 
 const PAGE_SIZE = 10;
 
-export default function TaskList({ initialTasks }: { initialTasks: TaskCardData[] }) {  const searchParams = useSearchParams();
+type TaskListProps = {
+  initialTasks: TaskCardData[];
+  showSkeleton?: boolean;
+};
+
+export default function TaskList({
+  initialTasks,
+  showSkeleton = false,
+}: TaskListProps) {
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   
   // Local state for accumulated tasks
@@ -37,20 +47,26 @@ export default function TaskList({ initialTasks }: { initialTasks: TaskCardData[
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-3">
-        {tasks.map((task) => (
-          <TaskCard key={task.slug} task={task} />
-        ))}
-      </div>
+      {showSkeleton ? (
+        <TaskListSkeleton />
+      ) : (
+        <>
+          <div className="grid gap-3">
+            {tasks.map((task) => (
+              <TaskCard key={task.slug} task={task} />
+            ))}
+          </div>
 
-      {hasMore && (
-        <button
-          onClick={handleLoadMore}
-          disabled={isPending}
-          className="w-full py-4 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50 cursor-pointer"
-        >
-          {isPending ? 'Loading...' : 'Show more tasks'}
-        </button>
+          {hasMore && (
+            <button
+              onClick={handleLoadMore}
+              disabled={isPending}
+              className="w-full py-4 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {isPending ? 'Loading...' : 'Show more tasks'}
+            </button>
+          )}
+        </>
       )}
     </div>
   );

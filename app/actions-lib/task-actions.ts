@@ -10,6 +10,7 @@ import { RESPONSE_SCHEMA, TASK_SCHEMA, type TaskFormValues, type TaskInput } fro
 import type { CreateTaskState } from './task-action-types';
 import type { LearningConfig } from '@/lib/learning-config';
 import { inferLanguageRuntime, inferLanguageTag } from '@/lib/language-utils';
+import { canonicalizeTag, normalizeTag } from '@/lib/tag-utils';
 import { verifyCaptcha } from './captcha';
 
 type CheckSolutionResult = {
@@ -25,26 +26,22 @@ export type TaskGenerationConfig = Partial<Pick<LearningConfig, 'aiMentorRole' |
   codeFileExtension?: string;
 };
 
-function canonicalizeTag(value: string) {
-  return value.trim().toLowerCase().replace(/[\s._-]+/g, '').replace(/[^a-z0-9#+]/g, '');
-}
-
 function removeLanguageTags(tags: string[], languageName: string) {
   const languageRuntime = inferLanguageRuntime(languageName);
   const blocked = new Set([
-    languageName.trim().toLowerCase(),
+    normalizeTag(languageName),
     inferLanguageTag(languageName),
     canonicalizeTag(languageName),
   ].filter(Boolean));
   const seen = new Set<string>();
 
-  return tags.filter((tag) => {
+  return tags.flatMap((tag) => {
     const trimmed = tag.trim();
     if (!trimmed) {
-      return false;
+      return [];
     }
 
-    const normalized = trimmed.toLowerCase();
+    const normalized = normalizeTag(trimmed);
     const canonical = canonicalizeTag(trimmed);
     const tagRuntime = inferLanguageRuntime(trimmed);
     const isSameKnownLanguage =
@@ -54,15 +51,15 @@ function removeLanguageTags(tags: string[], languageName: string) {
       languageRuntime.ext === tagRuntime.ext;
 
     if (blocked.has(normalized) || blocked.has(canonical) || isSameKnownLanguage) {
-      return false;
+      return [];
     }
 
     if (seen.has(canonical)) {
-      return false;
+      return [];
     }
 
     seen.add(canonical);
-    return true;
+    return [normalized];
   });
 }
 

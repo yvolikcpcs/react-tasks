@@ -1,5 +1,11 @@
 import type { Difficulty, TaskFiltersParams } from '@/lib/types/task';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { normalizeTag, normalizeTags } from '@/lib/tag-utils';
+import {
+  canonicalizeLanguageName,
+  isKnownLanguageTag,
+  normalizeLanguageLabel,
+} from '@/lib/language-utils';
 
 type TaskRow = {
   slug: string;
@@ -14,6 +20,22 @@ type TaskRow = {
     referenceSolution?: string;
   } | null;
 };
+
+function normalizeDifficultyFilter(difficulty?: string) {
+  return difficulty?.toLowerCase();
+}
+
+function normalizeTaskRowTags(tags: string[] | null | undefined) {
+  return normalizeTags(tags ?? []).filter((tag) => !isKnownLanguageTag(tag));
+}
+
+function normalizeTaskLanguage(languageName: string | undefined) {
+  return languageName ? normalizeLanguageLabel(languageName) : languageName;
+}
+
+function getTaskLanguageLabel(languageName: string | undefined) {
+  return normalizeTaskLanguage(languageName) ?? 'Programming Language';
+}
 
 export async function getAllTasks() {
   const supabase = await createSupabaseServerClient();
@@ -30,9 +52,9 @@ export async function getAllTasks() {
   return rows.map((row) => ({
     slug: row.slug,
     title: row.title,
-    languageName: row.content?.languageName,
+    languageName: normalizeTaskLanguage(row.content?.languageName),
     difficulty: row.difficulty,
-    tags: row.tags ?? [],
+    tags: normalizeTaskRowTags(row.tags),
   }));
 }
 
@@ -53,7 +75,7 @@ export async function getTaskBySlug(slug: string) {
   }
 
   const description = row.content?.description ?? 'No description provided.';
-  const languageName = row.content?.languageName ?? 'Programming Language';
+  const languageName = normalizeTaskLanguage(row.content?.languageName) ?? 'Programming Language';
   const starterCode = row.content?.starterCode ?? '// No starter code provided';
   const referenceSolution = row.content?.referenceSolution ?? '';
   const hint = row.hint ?? '';
@@ -62,7 +84,7 @@ export async function getTaskBySlug(slug: string) {
     data: {
       title: row.title,
       difficulty: row.difficulty,
-      tags: row.tags ?? [],
+      tags: normalizeTaskRowTags(row.tags),
       languageName,
       description,
       starterCode,
@@ -85,33 +107,46 @@ export async function getTasksPaginated(
     .select('slug, title, difficulty, tags, content')
     .order('created_at', { ascending: false });
 
-  // Filter by language inside the JSONB 'content' column
-  if (filters.language && filters.language !== 'All') {
-    query = query.eq('content->>languageName', filters.language);
-  }
-
   // Filter by difficulty
   if (filters.difficulty && filters.difficulty !== 'All') {
-    query = query.eq('difficulty', filters.difficulty.toLowerCase());
+    query = query.eq('difficulty', normalizeDifficultyFilter(filters.difficulty));
   }
 
-  // Filter by tags (Postgres array contains check)
-  if (filters.tag && filters.tag !== 'All') {
-    query = query.contains('tags', [filters.tag]);
-  }
+  const normalizedLanguageFilter =
+    filters.language && filters.language !== 'All'
+      ? canonicalizeLanguageName(filters.language)
+      : null;
+  const normalizedTagFilter =
+    filters.tag && filters.tag !== 'All' ? normalizeTag(filters.tag) : null;
 
-  // Apply pagination range
-  const { data, error } = await query.range(offset, offset + limit - 1);
+  const needsClientFiltering = Boolean(normalizedLanguageFilter || normalizedTagFilter);
+  const finalQuery = needsClientFiltering ? query : query.range(offset, offset + limit - 1);
+  const { data, error } = await finalQuery;
 
   if (error) throw new Error(error.message);
 
-  return (data ?? []).map((row) => ({
+  const tasks = (data ?? []).map((row) => ({
     slug: row.slug,
     title: row.title,
-    languageName: row.content?.languageName,
+    languageName: getTaskLanguageLabel(row.content?.languageName),
     difficulty: row.difficulty,
-    tags: row.tags ?? [],
+    tags: normalizeTaskRowTags(row.tags),
   }));
+
+  if (!needsClientFiltering) {
+    return tasks;
+  }
+
+  return tasks
+    .filter((task) => {
+      const matchesLanguage =
+        !normalizedLanguageFilter ||
+        canonicalizeLanguageName(task.languageName ?? '') === normalizedLanguageFilter;
+      const matchesTag = !normalizedTagFilter || task.tags.includes(normalizedTagFilter);
+
+      return matchesLanguage && matchesTag;
+    })
+    .slice(offset, offset + limit);
 }
 
 export async function getFilterMetadata(params: TaskFiltersParams = {}) {
@@ -130,6 +165,11 @@ export async function getFilterMetadata(params: TaskFiltersParams = {}) {
 
   const languages: Record<string, number> = {};
   const tags: Record<string, number> = {};
+  const selectedDifficulty = normalizeDifficultyFilter(params.difficulty);
+  const selectedLanguage =
+    params.language && params.language !== 'All'
+      ? canonicalizeLanguageName(params.language)
+      : null;
   
   // Note: Difficulty levels are usually static, 
   // but we can count them too if needed.
@@ -138,21 +178,26 @@ export async function getFilterMetadata(params: TaskFiltersParams = {}) {
     // 1. Always count languages (Global counts)
     const lang = row.content?.languageName;
     if (lang) {
-      languages[lang] = (languages[lang] || 0) + 1;
+      const displayLanguage = normalizeLanguageLabel(lang);
+
+      if (displayLanguage) {
+        languages[displayLanguage] = (languages[displayLanguage] || 0) + 1;
+      }
     }
 
-    // 2. Count tags ONLY if the task matches selected Language and Difficulty
-    const matchesLanguage = !params.language || params.language === 'All' || lang === params.language;
-    const matchesDifficulty = !params.difficulty || params.difficulty === 'All' || row.difficulty === params.difficulty;
+    // 2. Count tags only within the selected language/difficulty slice.
+    // We intentionally do not narrow tag counts by the currently selected tag,
+    // because the tag panel is meant to help users explore what else exists there.
+    const matchesLanguage =
+      !selectedLanguage ||
+      canonicalizeLanguageName(lang ?? '') === selectedLanguage;
+    const matchesDifficulty =
+      !selectedDifficulty || params.difficulty === 'All' || row.difficulty === selectedDifficulty;
 
     if (matchesLanguage && matchesDifficulty) {
-      if (Array.isArray(row.tags)) {
-        row.tags.forEach((tag: string) => {
-          if (tag) {
-            tags[tag] = (tags[tag] || 0) + 1;
-          }
-        });
-      }
+      normalizeTaskRowTags(row.tags).forEach((tag) => {
+        tags[tag] = (tags[tag] || 0) + 1;
+      });
     }
   });
 

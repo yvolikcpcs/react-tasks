@@ -82,6 +82,18 @@ function formatLanguageLabel(alias: string) {
   return DISPLAY_LABELS[alias] ?? alias;
 }
 
+export const canonicalizeLanguageName = (languageName: string) => normalize(languageName);
+
+export const normalizeLanguageLabel = (languageName: string) => {
+  const trimmed = languageName.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  const normalized = normalize(trimmed);
+  return DISPLAY_LABELS[normalized] ?? trimmed;
+};
+
 export const inferLanguageRuntime = (languageName: string) => {
   const normalized = normalize(languageName);
   const direct = LANGUAGE_ALIASES[normalized];
@@ -100,6 +112,19 @@ export const inferLanguageRuntime = (languageName: string) => {
   if (normalized.includes('svelte')) return { editor: 'javascript', ext: 'svelte' };
 
   return { editor: 'plaintext', ext: 'txt' };
+};
+
+export const isKnownLanguageTag = (value: string) => {
+  const normalized = normalize(value);
+  if (!normalized) {
+    return false;
+  }
+
+  if (LANGUAGE_ALIASES[normalized]) {
+    return true;
+  }
+
+  return inferLanguageRuntime(normalized).editor !== 'plaintext';
 };
 
 export const inferLanguageTag = (languageName: string) => {

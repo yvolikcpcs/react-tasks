@@ -7,12 +7,13 @@ import { FilterButton } from './filter-button';
 interface TaskFiltersProps {
   languages: Record<string, number>;
   tags: Record<string, number>;
+  onNavigationStart?: (nextFiltersKey: string) => void;
 }
 
 const DIFFICULTIES = ['All', 'Easy', 'Medium', 'Hard'];
 const INITIAL_TAG_LIMIT = 20;
 
-export default function TaskFilters({ languages, tags }: TaskFiltersProps) {
+export default function TaskFilters({ languages, tags, onNavigationStart }: TaskFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -55,6 +56,15 @@ export default function TaskFilters({ languages, tags }: TaskFiltersProps) {
       params.set(key, value);
     }
 
+    const nextUrl = `/?${params.toString()}`;
+    const currentUrl = searchParams.toString() ? `/?${searchParams.toString()}` : '/';
+
+    if (nextUrl === currentUrl) {
+      return;
+    }
+
+    onNavigationStart?.(params.toString());
+
     startTransition(() => {
       // 3. Update optimistic state immediately
       if (key === 'language') setOptLang(value);
@@ -62,7 +72,7 @@ export default function TaskFilters({ languages, tags }: TaskFiltersProps) {
       if (key === 'tag') setOptTag(value);
 
       // Start the actual navigation in background
-      router.push(`/?${params.toString()}`, { scroll: false });
+      router.push(nextUrl, { scroll: false });
     });
   };
 

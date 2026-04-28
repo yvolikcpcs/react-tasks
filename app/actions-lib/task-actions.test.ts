@@ -76,6 +76,27 @@ describe('createTaskActionImpl', () => {
     }));
   });
 
+  it('should normalize mixed-case duplicate tags on create', async () => {
+    const mockSupabase = {
+      from: vi.fn().mockReturnThis(),
+      insert: vi.fn().mockResolvedValue({ error: null })
+    };
+
+    mockedAuth.mockResolvedValue({
+      user: { id: 'user_123' } as User,
+      supabase: mockSupabase as unknown as SupabaseClient
+    });
+
+    await createTaskActionImpl({
+      ...mockTask,
+      tags: ['React', 'react', ' Hooks '],
+    }, 'fake-token');
+
+    expect(mockSupabase.insert).toHaveBeenCalledWith(expect.objectContaining({
+      tags: ['react', 'hooks'],
+    }));
+  });
+
   it('should increment slug index if a collision occurs in the database', async () => {
     const mockInsert = vi.fn()
       .mockResolvedValueOnce({ error: { code: '23505', message: 'duplicate key' } })
@@ -243,5 +264,27 @@ describe('generateTaskActionImpl', () => {
     });
 
     expect(result.tags).toEqual(['arrays', 'basic']);
+  });
+
+  it('should normalize mixed-case generated tags', async () => {
+    mockedGenerateText.mockResolvedValueOnce({
+      output: {
+        languageName: 'JavaScript',
+        title: 'JS task',
+        description: 'This is a long enough description to pass Zod validation.',
+        hint: 'A useful hint for the user.',
+        starterCode: 'const x = 10; // enough chars here',
+        referenceSolution: 'const x = 20; // enough chars here',
+        difficulty: 'medium',
+        tags: ['React', 'react', ' Hooks ']
+      },
+    } as unknown as GenerateTextResult);
+
+    const result = await generateTaskActionImpl('Topic', 'token', {
+      ...mockConfig,
+      languageName: 'JavaScript',
+    });
+
+    expect(result.tags).toEqual(['react', 'hooks']);
   });
 });

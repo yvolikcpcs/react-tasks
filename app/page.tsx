@@ -1,20 +1,17 @@
-import { Suspense } from 'react';
 import { getFilterMetadata, getTasksPaginated } from '@/lib/supabase-tasks';
-import TaskFilters from '@/components/task/task-filters';
 import TaskEditForm from '@/components/task/task-edit-form';
-import TaskList from '@/components/task/task-list';
-import TaskListSkeleton from '@/components/task/task-list-skeleton';
+import TaskCatalog from '@/components/task/task-catalog';
 import { learningConfig } from '@/lib/learning-config';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { TaskFiltersParams } from '@/lib/types/task';
 
-/**
- * Dedicated Async Component to handle data fetching for the task list.
- * This allows the rest of the page to render while the DB is queried.
- */
-async function TaskListLoader({ searchParams }: { searchParams: TaskFiltersParams }) {
-  const initialTasks = await getTasksPaginated(10, 0, searchParams);
-  return <TaskList initialTasks={initialTasks} />;
+function buildFiltersKey(params: TaskFiltersParams) {
+  return new URLSearchParams(
+    Object.entries(params).filter((entry): entry is [string, string] => {
+      const [, value] = entry;
+      return typeof value === 'string' && value.length > 0;
+    })
+  ).toString();
 }
 
 export default async function Home({ 
@@ -23,11 +20,15 @@ export default async function Home({
   searchParams: Promise<TaskFiltersParams> 
 }) {
   const params = await searchParams;
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const userPromise = createSupabaseServerClient().then((supabase) => supabase.auth.getUser());
+  const [initialTasks, metadata] = await Promise.all([
+    getTasksPaginated(10, 0, params),
+    getFilterMetadata(params),
+  ]);
+  const filtersKey = buildFiltersKey(params);
 
-  // Fast fetch: metadata for filters
-  const metadata = await getFilterMetadata(params);
+  const userResult = await userPromise;
+  const user = userResult.data.user;
 
   return (
     <div className="space-y-8">
@@ -39,15 +40,12 @@ export default async function Home({
         <TaskEditForm config={learningConfig} isGuest={!user}/>
       </div>
 
-      {/* Render filters immediately via SSR */}
-      <TaskFilters 
+      <TaskCatalog
+        filtersKey={filtersKey}
+        initialTasks={initialTasks}
         languages={metadata.languages} 
         tags={metadata.tags} 
       />
-
-      <Suspense key={JSON.stringify(params)} fallback={<TaskListSkeleton />}>
-        <TaskListLoader searchParams={params} />
-      </Suspense>
     </div>
   );
 }

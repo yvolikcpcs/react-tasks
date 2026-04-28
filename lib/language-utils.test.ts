@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { inferLanguageRuntime, inferLanguageSuggestion, inferLanguageTag } from './language-utils';
+import {
+  canonicalizeLanguageName,
+  inferLanguageRuntime,
+  inferLanguageSuggestion,
+  inferLanguageTag,
+  isKnownLanguageTag,
+  normalizeLanguageLabel,
+} from './language-utils';
 
 describe('language-utils', () => {
   describe('inferLanguageRuntime', () => {
@@ -61,6 +68,41 @@ describe('language-utils', () => {
 
     it('should return null when no known language is present', () => {
       expect(inferLanguageSuggestion('data structures and problem solving')).toBeNull();
+    });
+  });
+
+  describe('normalizeLanguageLabel', () => {
+    it('should normalize known aliases to a display label', () => {
+      expect(normalizeLanguageLabel('react')).toBe('React');
+      expect(normalizeLanguageLabel('React')).toBe('React');
+      expect(normalizeLanguageLabel('typescript')).toBe('TypeScript');
+      expect(normalizeLanguageLabel('c#')).toBe('C#');
+    });
+
+    it('should preserve unknown labels except for trimming', () => {
+      expect(normalizeLanguageLabel('  Elixir  ')).toBe('Elixir');
+    });
+  });
+
+  describe('canonicalizeLanguageName', () => {
+    it('should compare language names case-insensitively', () => {
+      expect(canonicalizeLanguageName('React')).toBe('react');
+      expect(canonicalizeLanguageName(' react ')).toBe('react');
+    });
+  });
+
+  describe('isKnownLanguageTag', () => {
+    it('should detect known languages and frameworks', () => {
+      expect(isKnownLanguageTag('react')).toBe(true);
+      expect(isKnownLanguageTag('React')).toBe(true);
+      expect(isKnownLanguageTag('c#')).toBe(true);
+      expect(isKnownLanguageTag('next.js')).toBe(true);
+    });
+
+    it('should ignore regular topic tags', () => {
+      expect(isKnownLanguageTag('hooks')).toBe(false);
+      expect(isKnownLanguageTag('algorithms')).toBe(false);
+      expect(isKnownLanguageTag('string manipulation')).toBe(false);
     });
   });
 });
