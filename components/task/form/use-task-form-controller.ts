@@ -179,6 +179,14 @@ export function useTaskFormController({
     void submitWithIntent(intent === 'generate' ? 'generate' : 'save');
   }, [submitWithIntent]);
 
+  const handleGenerateClick = useCallback(() => {
+    void submitWithIntent('generate');
+  }, [submitWithIntent]);
+
+  const handleSaveClick = useCallback(() => {
+    void submitWithIntent('save');
+  }, [submitWithIntent]);
+
   const handleTopicChange = useCallback((value: string) => {
     setTopic(value);
     setTopicError(null);
@@ -237,6 +245,8 @@ export function useTaskFormController({
     handleCaptchaSuccess: setCaptchaToken,
     handleClose,
     handleFormSubmit,
+    handleGenerateClick,
+    handleSaveClick,
     handleTopicChange,
     hasCaptcha: Boolean(captchaToken),
     isCreating,

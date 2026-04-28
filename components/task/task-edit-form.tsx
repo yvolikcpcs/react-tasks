@@ -1,11 +1,13 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import type { LearningConfig } from '@/lib/learning-config';
-import { TaskFormModal } from './form/task-form-modal';
-import { useTaskFormController } from './form/use-task-form-controller';
+
+// Lazy-load the modal form so the home page does not pay for RHF, Turnstile, and action wiring before the dialog is opened.
+const TaskEditFormDialog = dynamic(() => import('./task-edit-form-dialog'));
 
 type TaskFormProps = {
   config: Pick<LearningConfig, 'aiMentorRole' | 'aiContentLanguage'>;
@@ -15,33 +17,6 @@ type TaskFormProps = {
 export default function TaskForm({ config, isGuest }: TaskFormProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const {
-    captchaToken,
-    createFormAction,
-    errors,
-    formErrorMessage,
-    formRef,
-    generateFormAction,
-    generateSubmitButtonRef,
-    handleCaptchaExpire,
-    handleCaptchaSuccess,
-    handleClose,
-    handleFormSubmit,
-    handleTopicChange,
-    hasCaptcha,
-    isCreating,
-    isGenerating,
-    languageLabel,
-    languageRuntimeExt,
-    register,
-    saveSubmitButtonRef,
-    title,
-    topic,
-    topicError,
-    turnstileRef,
-  } = useTaskFormController({
-    closeModal: () => setOpen(false),
-  });
 
   const handleOpenModal = () => {
     if (isGuest) {
@@ -63,32 +38,10 @@ export default function TaskForm({ config, isGuest }: TaskFormProps) {
       </button>
 
       {open && (
-        <TaskFormModal
-          captchaToken={captchaToken}
+        <TaskEditFormDialog
           config={config}
-          createFormAction={createFormAction}
-          errors={errors}
-          formErrorMessage={formErrorMessage}
-          formRef={formRef}
-          generateFormAction={generateFormAction}
-          generateSubmitButtonRef={generateSubmitButtonRef}
-          handleCaptchaExpire={handleCaptchaExpire}
-          handleCaptchaSuccess={handleCaptchaSuccess}
-          handleClose={handleClose}
-          handleFormSubmit={handleFormSubmit}
-          handleTopicChange={handleTopicChange}
-          hasCaptcha={hasCaptcha}
-          isCreating={isCreating}
-          isGenerating={isGenerating}
-          languageLabel={languageLabel}
-          languageRuntimeExt={languageRuntimeExt}
+          closeModal={() => setOpen(false)}
           open={open}
-          register={register}
-          saveSubmitButtonRef={saveSubmitButtonRef}
-          title={title}
-          topic={topic}
-          topicError={topicError}
-          turnstileRef={turnstileRef}
         />
       )}
     </>

@@ -1,6 +1,5 @@
 'use client';
 
-import type { RefObject } from 'react';
 import { SaveButton } from './save-button';
 
 type TaskFormFooterProps = {
@@ -8,7 +7,7 @@ type TaskFormFooterProps = {
   isCreating: boolean;
   isGenerating: boolean;
   onClose: () => void;
-  saveSubmitButtonRef: RefObject<HTMLButtonElement | null>;
+  onSaveClick: () => void;
 };
 
 export function TaskFormFooter({
@@ -16,7 +15,7 @@ export function TaskFormFooter({
   isCreating,
   isGenerating,
   onClose,
-  saveSubmitButtonRef,
+  onSaveClick,
 }: TaskFormFooterProps) {
   return (
     <div className="flex items-center justify-end gap-3">
@@ -28,10 +27,9 @@ export function TaskFormFooter({
         Cancel
       </button>
       <SaveButton
-        ref={saveSubmitButtonRef}
-        data-intent="save"
         disabled={isGenerating || !hasCaptcha}
         loading={isCreating}
+        onClick={onSaveClick}
       />
     </div>
   );

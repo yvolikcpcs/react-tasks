@@ -10,14 +10,13 @@ import { GenerateButton } from './generate-button';
 
 type TaskFormFieldsProps = {
   formErrorMessage: string | null;
-  generateButtonRef: RefObject<HTMLButtonElement | null>;
-  generateFormAction: (payload: FormData) => void;
   isGenerating: boolean;
   languageLabel: string;
   languageRuntimeExt: string;
   errors: FieldErrors<TaskFormValues>;
   onCaptchaExpire: () => void;
   onCaptchaSuccess: (token: string) => void;
+  onGenerateClick: () => void;
   onTopicChange: (value: string) => void;
   register: UseFormRegister<TaskFormValues>;
   topic: string;
@@ -27,14 +26,13 @@ type TaskFormFieldsProps = {
 
 export function TaskFormFields({
   formErrorMessage,
-  generateButtonRef,
-  generateFormAction,
   isGenerating,
   languageLabel,
   languageRuntimeExt,
   errors,
   onCaptchaExpire,
   onCaptchaSuccess,
+  onGenerateClick,
   onTopicChange,
   register,
   topic,
@@ -63,10 +61,8 @@ export function TaskFormFields({
             inputClassName="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500"
           />
           <GenerateButton
-            ref={generateButtonRef}
-            data-intent="generate"
-            formAction={generateFormAction}
             loading={isGenerating}
+            onClick={onGenerateClick}
           />
         </div>
       </div>

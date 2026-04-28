@@ -22,6 +22,8 @@ type TaskFormModalProps = {
   handleCaptchaSuccess: (token: string) => void;
   handleClose: () => void;
   handleFormSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  handleGenerateClick: () => void;
+  handleSaveClick: () => void;
   handleTopicChange: (value: string) => void;
   hasCaptcha: boolean;
   isCreating: boolean;
@@ -50,6 +52,8 @@ export function TaskFormModal({
   handleCaptchaSuccess,
   handleClose,
   handleFormSubmit,
+  handleGenerateClick,
+  handleSaveClick,
   handleTopicChange,
   hasCaptcha,
   isCreating,
@@ -73,6 +77,14 @@ export function TaskFormModal({
       <input type="hidden" name="captchaToken" value={captchaToken ?? ''} />
       <input type="hidden" name="aiMentorRole" value={config.aiMentorRole} />
       <input type="hidden" name="aiContentLanguage" value={config.aiContentLanguage} />
+      <button ref={saveSubmitButtonRef} type="submit" data-intent="save" hidden />
+      <button
+        ref={generateSubmitButtonRef}
+        type="submit"
+        data-intent="generate"
+        formAction={generateFormAction}
+        hidden
+      />
       <Modal
         open={open}
         title={title}
@@ -83,20 +95,19 @@ export function TaskFormModal({
             isCreating={isCreating}
             isGenerating={isGenerating}
             onClose={handleClose}
-            saveSubmitButtonRef={saveSubmitButtonRef}
+            onSaveClick={handleSaveClick}
           />
         }
       >
         <TaskFormFields
           errors={errors}
           formErrorMessage={formErrorMessage}
-          generateButtonRef={generateSubmitButtonRef}
-          generateFormAction={generateFormAction}
           isGenerating={isGenerating}
           languageLabel={languageLabel}
           languageRuntimeExt={languageRuntimeExt}
           onCaptchaExpire={handleCaptchaExpire}
           onCaptchaSuccess={handleCaptchaSuccess}
+          onGenerateClick={handleGenerateClick}
           onTopicChange={handleTopicChange}
           register={register}
           topic={topic}

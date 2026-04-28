@@ -42,6 +42,7 @@ This project intentionally uses modern **Next.js App Router** and **React 19** p
 - **`Suspense` boundaries** for streaming task list and task detail content.
 - **Cache revalidation** with `revalidatePath()` after task creation.
 - **Navigation hooks** such as `useRouter()` and `useSearchParams()` for client-side transitions.
+- **`next/dynamic`** to lazy-load the task creation dialog so the home page does not ship the heavier form logic until it is opened.
 - **Proxy / middleware-style request handling** via [`proxy.ts`](proxy.ts) to keep Supabase auth cookies in sync.
 
 ### React 19
@@ -50,7 +51,6 @@ This project intentionally uses modern **Next.js App Router** and **React 19** p
 - **`useFormStatus`** inside submit buttons for action pending state.
 - **`useOptimistic`** in task filters for immediate UI feedback before URL navigation completes.
 - **`useTransition`** for non-blocking filter and list updates.
-- **`useEffectEvent`** to coordinate post-action success/error side effects without stale closures.
 - **`Suspense`** for async UI boundaries.
 
 ## 🚦 Quick Start
