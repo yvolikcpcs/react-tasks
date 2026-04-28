@@ -1,21 +1,11 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
-import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
-import { createTaskAction, generateTaskAction } from '@/app/actions';
 import type { LearningConfig } from '@/lib/learning-config';
-import { inferLanguageRuntime, inferLanguageTag } from '@/lib/language-utils';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { TASK_SCHEMA, TaskFormValues, type TaskInput } from '@/app/actions-lib/schemas';
-import Modal from '@/components/ui/modal';
-import FormField from '@/components/ui/form/form-field';
-import TextareaField from '@/components/ui/form/textarea-field';
-import { GenerateButton } from './form/generate-button';
-import { SaveButton } from './form/save-button';
-
+import { TaskFormModal } from './form/task-form-modal';
+import { useTaskFormController } from './form/use-task-form-controller';
 
 type TaskFormProps = {
   config: Pick<LearningConfig, 'aiMentorRole' | 'aiContentLanguage'>;
@@ -25,30 +15,32 @@ type TaskFormProps = {
 export default function TaskForm({ config, isGuest }: TaskFormProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [topic, setTopic] = useState('');
-  const [topicError, setTopicError] = useState<string | null>(null);
-  const [loadingGenerate, setLoadingGenerate] = useState(false);
-
   const {
+    captchaToken,
+    createFormAction,
+    errors,
+    formErrorMessage,
+    formRef,
+    generateFormAction,
+    generateSubmitButtonRef,
+    handleCaptchaExpire,
+    handleCaptchaSuccess,
+    handleClose,
+    handleFormSubmit,
+    handleTopicChange,
+    hasCaptcha,
+    isCreating,
+    isGenerating,
+    languageLabel,
+    languageRuntimeExt,
     register,
-    handleSubmit,
-    reset,
-    getValues,
-    setError,
-    clearErrors,
-    formState: { errors, isSubmitting },
-  } = useForm<TaskFormValues>({
-    resolver: zodResolver(TASK_SCHEMA),
-    defaultValues: {
-      difficulty: 'medium',
-      languageName: '',
-      title: '',
-      description: '',
-      hint: '',
-      starterCode: '',
-      referenceSolution: '',
-      tags: '',
-    },
+    saveSubmitButtonRef,
+    title,
+    topic,
+    topicError,
+    turnstileRef,
+  } = useTaskFormController({
+    closeModal: () => setOpen(false),
   });
 
   const handleOpenModal = () => {
@@ -58,94 +50,6 @@ export default function TaskForm({ config, isGuest }: TaskFormProps) {
     }
     setOpen(true);
   };
-
-  const turnstileRef = useRef<TurnstileInstance>(null);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-
-  const handleGenerate = async () => {
-    if (!topic.trim()) {
-      setTopicError('Please enter a topic first');
-      return;
-    }
-    
-    if (!captchaToken) {
-      setError('root', { message: 'Please verify you are human' });
-      return;
-    }
-
-    const languageName = getValues('languageName');
-    if (!languageName) {
-      setError('languageName', { message: 'Required for AI generation' });
-      return;
-    }
-  
-    setLoadingGenerate(true);
-    setTopicError(null);
-    try {
-      const runtime = inferLanguageRuntime(languageName);
-      const data = await generateTaskAction(topic, captchaToken!, {
-        aiMentorRole: config.aiMentorRole,
-        languageName,
-        aiContentLanguage: config.aiContentLanguage,
-        defaultTag: inferLanguageTag(languageName),
-        codeFileExtension: runtime.ext,
-      });
-      reset(data);
-      setTopic('');
-    } catch (err) {
-      console.error(err);
-      setError('root', { message: 'Failed to generate task. Please try again.' });
-    } finally {
-      setLoadingGenerate(false);
-      setCaptchaToken(null);
-      turnstileRef.current?.reset();
-    }
-  };
-
-  const onSubmit = async (data: TaskInput) => {
-    if (!captchaToken) {
-      setError('root', { message: 'Please verify you are human' });
-      return;
-    }
-    clearErrors();
-    try {
-      const { slug } = await createTaskAction(data, captchaToken!);
-      setOpen(false);
-      router.push(`/tasks/${slug}`);
-      router.refresh();
-    }  catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
-      setError('root', { message: errorMessage });
-      
-      setCaptchaToken(null);
-      turnstileRef.current?.reset();
-    }
-  };
-
-  const handleClose = () => {
-    setOpen(false);
-    
-    reset({
-      difficulty: 'medium',
-      languageName: '',
-      title: '',
-      description: '',
-      hint: '',
-      starterCode: '',
-      referenceSolution: '',
-      tags: [],
-    }); 
-    
-    setTopic('');
-    setTopicError(null);
-    setCaptchaToken(null);
-    clearErrors();
-    
-    turnstileRef.current?.reset();
-  };
-
-  const languageLabel = getValues('languageName') || 'task';
-  const languageRuntime = inferLanguageRuntime(getValues('languageName'));
 
   return (
     <>
@@ -158,139 +62,35 @@ export default function TaskForm({ config, isGuest }: TaskFormProps) {
         Add task
       </button>
 
-      <Modal
-        open={open}
-        title={`Create ${languageLabel} task`}
-        onClose={handleClose}
-        footer={
-          <div className="flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              Cancel
-            </button>
-            <SaveButton disabled={isSubmitting || loadingGenerate || !captchaToken} loading={isSubmitting} onClick={() => {
-                clearErrors();
-                handleSubmit((data) => onSubmit(data as TaskInput))();
-            }} />
-          </div>
-        }
-      >
-        <div
-          className={`space-y-4 transition-opacity duration-300 ${
-          loadingGenerate ? 'opacity-50 pointer-events-none' : 'opacity-100'
-          }`}
-        >
-          <div className="grid gap-2">
-            <label htmlFor="task-topic" className="text-sm font-semibold text-slate-700">
-              Topic for AI Generation
-            </label>
-            <div className="flex gap-2 items-start">
-              <FormField
-                id="task-topic"
-                value={topic}
-                onChange={(e) => {
-                  setTopic(e.target.value);
-                  setTopicError(null);
-                }}
-                error={topicError || undefined}
-                placeholder={`Example: ${languageLabel} arrays and control flow`}
-                className="w-full"
-                inputClassName="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500"
-              />
-              <GenerateButton onClick={handleGenerate} loading={loadingGenerate} />
-            </div>
-          </div>
-
-          <FormField
-            id="task-language-name"
-            label="Programming Language / Framework / Product"
-            error={errors.languageName?.message}
-            {...register('languageName')}
-          />
-
-          <FormField
-            id="task-title"
-            label="Title"
-            error={errors.title?.message}
-            {...register('title')}
-          />
-
-          <TextareaField
-            id="task-description"
-            label="Description (Markdown)"
-            error={errors.description?.message}
-            {...register('description')}
-            rows={5}
-          />
-
-          <TextareaField
-            id="task-hint"
-            label="Hint"
-            error={errors.hint?.message}
-            {...register('hint')}
-            rows={2}
-          />
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="grid gap-2">
-              <label htmlFor="task-difficulty" className="text-sm font-semibold text-slate-700">
-                Difficulty
-              </label>
-              <select
-                id="task-difficulty"
-                {...register('difficulty')}
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500"
-              >
-                <option value="easy">easy</option>
-                <option value="medium">medium</option>
-                <option value="hard">hard</option>
-              </select>
-            </div>
-            <FormField
-              id="task-tags"
-              label="Tags (comma-separated)"
-              error={errors.tags?.message}
-              {...register('tags')}
-            />
-          </div>
-
-          <TextareaField
-            id="task-starter-code"
-            label={`Starter Code (${languageRuntime.ext.toUpperCase()})`}
-            error={errors.starterCode?.message}
-            {...register('starterCode')}
-            rows={7}
-            textareaClassName="rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs text-slate-800 outline-none focus:border-blue-500"
-          />
-
-          <TextareaField
-            id="task-reference-solution"
-            label={`Reference Solution (${languageRuntime.ext.toUpperCase()})`}
-            error={errors.referenceSolution?.message}
-            {...register('referenceSolution')}
-            rows={7}
-            textareaClassName="rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs text-slate-800 outline-none focus:border-blue-500"
-          />
-
-          {errors.root && (
-            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-600 font-medium animate-in fade-in zoom-in duration-200">
-              ⚠️ {errors.root.message}
-            </div>
-          )}
-
-          <div className="flex justify-center py-4 border-t border-slate-100">
-            <Turnstile
-              ref={turnstileRef}
-              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
-              onSuccess={(token) => setCaptchaToken(token)}
-              onExpire={() => setCaptchaToken(null)}
-            />
-          </div>
-        </div>
-      </Modal>
+      {open && (
+        <TaskFormModal
+          captchaToken={captchaToken}
+          config={config}
+          createFormAction={createFormAction}
+          errors={errors}
+          formErrorMessage={formErrorMessage}
+          formRef={formRef}
+          generateFormAction={generateFormAction}
+          generateSubmitButtonRef={generateSubmitButtonRef}
+          handleCaptchaExpire={handleCaptchaExpire}
+          handleCaptchaSuccess={handleCaptchaSuccess}
+          handleClose={handleClose}
+          handleFormSubmit={handleFormSubmit}
+          handleTopicChange={handleTopicChange}
+          hasCaptcha={hasCaptcha}
+          isCreating={isCreating}
+          isGenerating={isGenerating}
+          languageLabel={languageLabel}
+          languageRuntimeExt={languageRuntimeExt}
+          open={open}
+          register={register}
+          saveSubmitButtonRef={saveSubmitButtonRef}
+          title={title}
+          topic={topic}
+          topicError={topicError}
+          turnstileRef={turnstileRef}
+        />
+      )}
     </>
   );
 }

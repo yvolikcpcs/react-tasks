@@ -47,7 +47,7 @@ describe('createTaskActionImpl', () => {
   const mockTask: TaskInput = {
     title: 'New React Task title',
     difficulty: 'medium',
-    tags: ['react'],
+    tags: ['react', 'typescript', 'hooks'],
     hint: 'Try using hooks',
     languageName: 'TypeScript',
     description: 'Build a counter component in React.',
@@ -59,18 +59,21 @@ describe('createTaskActionImpl', () => {
     const mockSupabase = {
       from: vi.fn().mockReturnThis(),
       insert: vi.fn().mockResolvedValue({ error: null })
-    } as unknown as SupabaseClient;
+    };
 
     // 3. Fix: Ensure the mock return matches the expected Promise structure
     mockedAuth.mockResolvedValue({
       user: { id: 'user_123' } as User,
-      supabase: mockSupabase
+      supabase: mockSupabase as unknown as SupabaseClient
     });
 
     const result = await createTaskActionImpl(mockTask, 'fake-token');
     
     expect(result.slug).toBe('new-react-task-title');
     expect(mockSupabase.from).toHaveBeenCalledWith('tasks');
+    expect(mockSupabase.insert).toHaveBeenCalledWith(expect.objectContaining({
+      tags: ['react', 'hooks'],
+    }));
   });
 
   it('should increment slug index if a collision occurs in the database', async () => {
@@ -81,17 +84,61 @@ describe('createTaskActionImpl', () => {
     const mockSupabase = {
       from: vi.fn().mockReturnThis(),
       insert: mockInsert
-    } as unknown as SupabaseClient;
+    };
 
     mockedAuth.mockResolvedValue({
       user: { id: 'user_123' } as User,
-      supabase: mockSupabase
+      supabase: mockSupabase as unknown as SupabaseClient
     });
 
     const result = await createTaskActionImpl(mockTask, 'fake-token');
     
     expect(result.slug).toBe('new-react-task-title-2'); 
     expect(mockInsert).toHaveBeenCalledTimes(2);
+  });
+
+  it('should remove c# language tags from manually created tasks', async () => {
+    const mockSupabase = {
+      from: vi.fn().mockReturnThis(),
+      insert: vi.fn().mockResolvedValue({ error: null })
+    };
+
+    mockedAuth.mockResolvedValue({
+      user: { id: 'user_123' } as User,
+      supabase: mockSupabase as unknown as SupabaseClient
+    });
+
+    await createTaskActionImpl({
+      ...mockTask,
+      languageName: 'C#',
+      tags: ['c#', 'string manipulation', 'algorithms', 'basic'],
+    }, 'fake-token');
+
+    expect(mockSupabase.insert).toHaveBeenCalledWith(expect.objectContaining({
+      tags: ['string manipulation', 'algorithms', 'basic'],
+    }));
+  });
+
+  it('should remove equivalent language aliases from manually created tasks', async () => {
+    const mockSupabase = {
+      from: vi.fn().mockReturnThis(),
+      insert: vi.fn().mockResolvedValue({ error: null })
+    };
+
+    mockedAuth.mockResolvedValue({
+      user: { id: 'user_123' } as User,
+      supabase: mockSupabase as unknown as SupabaseClient
+    });
+
+    await createTaskActionImpl({
+      ...mockTask,
+      languageName: 'CSharp',
+      tags: ['c#', 'arrays', 'basic'],
+    }, 'fake-token');
+
+    expect(mockSupabase.insert).toHaveBeenCalledWith(expect.objectContaining({
+      tags: ['arrays', 'basic'],
+    }));
   });
 });
 
@@ -136,6 +183,7 @@ describe('generateTaskActionImpl', () => {
 
     expect(result.title).toBe('Valid AI Task');
     expect(result.difficulty).toBe('medium');
+    expect(result.tags).toEqual(['logic']);
     expect(mockedGenerateText).toHaveBeenCalled();
   });
 
@@ -151,5 +199,49 @@ describe('generateTaskActionImpl', () => {
     await expect(
       generateTaskActionImpl('Topic', 'token', mockConfig)
     ).rejects.toThrow(); // Zod will catch the short description
+  });
+
+  it('should remove c# tags from generated tasks even if the AI returns them', async () => {
+    mockedGenerateText.mockResolvedValueOnce({
+      output: {
+        languageName: 'C#',
+        title: 'C# task',
+        description: 'This is a long enough description to pass Zod validation.',
+        hint: 'A useful hint for the user.',
+        starterCode: 'const x: number = 10; // enough chars',
+        referenceSolution: 'const x: number = 20; // enough chars',
+        difficulty: 'medium',
+        tags: ['c#', 'string manipulation', 'algorithms', 'basic']
+      },
+    } as unknown as GenerateTextResult);
+
+    const result = await generateTaskActionImpl('Topic', 'token', {
+      ...mockConfig,
+      languageName: 'C#',
+    });
+
+    expect(result.tags).toEqual(['string manipulation', 'algorithms', 'basic']);
+  });
+
+  it('should remove equivalent generated language aliases', async () => {
+    mockedGenerateText.mockResolvedValueOnce({
+      output: {
+        languageName: 'CSharp',
+        title: 'CSharp task',
+        description: 'This is a long enough description to pass Zod validation.',
+        hint: 'A useful hint for the user.',
+        starterCode: 'const x: number = 10; // enough chars',
+        referenceSolution: 'const x: number = 20; // enough chars',
+        difficulty: 'medium',
+        tags: ['c#', 'arrays', 'basic']
+      },
+    } as unknown as GenerateTextResult);
+
+    const result = await generateTaskActionImpl('Topic', 'token', {
+      ...mockConfig,
+      languageName: 'CSharp',
+    });
+
+    expect(result.tags).toEqual(['arrays', 'basic']);
   });
 });

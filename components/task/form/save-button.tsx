@@ -1,20 +1,28 @@
 'use client';
 
-type SaveButtonProps = {
-  onClick: () => void;
-  loading: boolean;
-  disabled?: boolean;
-};
+import { forwardRef, type ButtonHTMLAttributes } from 'react';
+import { useFormStatus } from 'react-dom';
 
-export function SaveButton({ onClick, loading, disabled }: SaveButtonProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={loading || disabled}
-      className="cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:bg-slate-400"
-    >
-      {loading ? 'Saving...' : 'Save task'}
-    </button>
-  );
-}
+type SaveButtonProps = {
+  loading: boolean;
+} & ButtonHTMLAttributes<HTMLButtonElement>;
+
+export const SaveButton = forwardRef<HTMLButtonElement, SaveButtonProps>(
+  ({ loading, disabled, className, ...buttonProps }, ref) => {
+    const { pending } = useFormStatus();
+
+    return (
+      <button
+        ref={ref}
+        type="submit"
+        disabled={pending || disabled}
+        className={className ?? 'cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:bg-slate-400'}
+        {...buttonProps}
+      >
+        {loading ? 'Saving...' : 'Save task'}
+      </button>
+    );
+  }
+);
+
+SaveButton.displayName = 'SaveButton';

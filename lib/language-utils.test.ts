@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { inferLanguageRuntime, inferLanguageTag } from './language-utils';
+import { inferLanguageRuntime, inferLanguageSuggestion, inferLanguageTag } from './language-utils';
 
 describe('language-utils', () => {
   describe('inferLanguageRuntime', () => {
@@ -45,6 +45,22 @@ describe('language-utils', () => {
     it('should return "programming" for empty input', () => {
       expect(inferLanguageTag('')).toBe('programming');
       expect(inferLanguageTag('   ')).toBe('programming');
+    });
+  });
+
+  describe('inferLanguageSuggestion', () => {
+    it('should suggest direct language aliases from topic text', () => {
+      expect(inferLanguageSuggestion('C# arrays and lists')).toBe('C#');
+      expect(inferLanguageSuggestion('typescript async functions')).toBe('TypeScript');
+      expect(inferLanguageSuggestion('react hooks interview task')).toBe('React');
+    });
+
+    it('should prefer the earliest language mention in the topic', () => {
+      expect(inferLanguageSuggestion('React forms with TypeScript')).toBe('React');
+    });
+
+    it('should return null when no known language is present', () => {
+      expect(inferLanguageSuggestion('data structures and problem solving')).toBeNull();
     });
   });
 });

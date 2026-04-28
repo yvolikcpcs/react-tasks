@@ -1,13 +1,9 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { signOutAction } from '@/app/auth/actions';
 import { Analytics } from "@vercel/analytics/react"
-
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Code Mentor AI",
@@ -22,7 +18,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-slate-900`}>
+      <body className="antialiased bg-white text-slate-900">
         {/* Simple Navigation */}
         <header className="border-b bg-white sticky top-0 z-10">
           <nav className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">

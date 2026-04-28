@@ -37,6 +37,51 @@ const LANGUAGE_ALIASES: Record<string, { editor: string; ext: string }> = {
 
 const normalize = (languageName: string) => languageName.trim().toLowerCase();
 
+const DISPLAY_LABELS: Record<string, string> = {
+  js: 'JavaScript',
+  javascript: 'JavaScript',
+  ts: 'TypeScript',
+  typescript: 'TypeScript',
+  py: 'Python',
+  python: 'Python',
+  java: 'Java',
+  csharp: 'C#',
+  'c#': 'C#',
+  cpp: 'C++',
+  'c++': 'C++',
+  c: 'C',
+  go: 'Go',
+  golang: 'Go',
+  rust: 'Rust',
+  ruby: 'Ruby',
+  php: 'PHP',
+  swift: 'Swift',
+  kotlin: 'Kotlin',
+  scala: 'Scala',
+  sql: 'SQL',
+  bash: 'Bash',
+  shell: 'Shell',
+  react: 'React',
+  reactjs: 'React',
+  'react.js': 'React',
+  'next.js': 'Next.js',
+  nextjs: 'Next.js',
+  vue: 'Vue',
+  angular: 'Angular',
+  svelte: 'Svelte',
+  html5: 'HTML',
+  html: 'HTML',
+  css: 'CSS',
+};
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function formatLanguageLabel(alias: string) {
+  return DISPLAY_LABELS[alias] ?? alias;
+}
+
 export const inferLanguageRuntime = (languageName: string) => {
   const normalized = normalize(languageName);
   const direct = LANGUAGE_ALIASES[normalized];
@@ -60,4 +105,29 @@ export const inferLanguageRuntime = (languageName: string) => {
 export const inferLanguageTag = (languageName: string) => {
   const normalized = normalize(languageName);
   return normalized.length > 0 ? normalized.replace(/\s+/g, '-') : 'programming';
+};
+
+export const inferLanguageSuggestion = (topic: string) => {
+  const normalizedTopic = normalize(topic);
+  if (!normalizedTopic) {
+    return null;
+  }
+
+  const aliases = Object.keys(LANGUAGE_ALIASES).sort((a, b) => b.length - a.length);
+  let bestMatch: { alias: string; index: number } | null = null;
+
+  for (const alias of aliases) {
+    const pattern = new RegExp(`(^|[^a-z0-9])${escapeRegExp(alias)}(?=$|[^a-z0-9])`);
+    const match = pattern.exec(normalizedTopic);
+    if (!match) {
+      continue;
+    }
+
+    const index = match.index + match[1].length;
+    if (!bestMatch || index < bestMatch.index || (index === bestMatch.index && alias.length > bestMatch.alias.length)) {
+      bestMatch = { alias, index };
+    }
+  }
+
+  return bestMatch ? formatLanguageLabel(bestMatch.alias) : null;
 };

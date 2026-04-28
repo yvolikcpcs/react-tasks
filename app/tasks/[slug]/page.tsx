@@ -6,6 +6,7 @@ import { MDXRemote } from 'next-mdx-remote/rsc';
 import { notFound } from 'next/navigation';
 import TaskInteractive from '@/components/task/task-interactive';
 import DifficultyBadge from '@/components/badge/difficulty-badge';
+import LanguageBadge from '@/components/badge/language-badge';
 import TagBadge from '@/components/badge/tag-badge';
 import { learningConfig } from '@/lib/learning-config';
 import { inferLanguageRuntime } from '@/lib/language-utils';
@@ -33,6 +34,7 @@ async function TaskContent({ slug }: { slug: string }) {
         </div>
 
         <div className="flex gap-4 flex-wrap">
+          <LanguageBadge language={data.languageName} />
           <DifficultyBadge difficulty={data.difficulty} />
           {data.tags.map((tag: string) => (
               <TagBadge key={`${slug}-${tag}`} tag={tag} />

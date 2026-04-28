@@ -6,9 +6,10 @@ import { mentorModel } from './ai-client';
 import { getRequestIdentifier, requireAuthenticatedUser } from './auth';
 import { isSlugConflict, slugify } from './helpers';
 import { checkSolutionRatelimit, generateTaskRatelimit } from './rate-limit';
-import { RESPONSE_SCHEMA, TASK_SCHEMA, type TaskInput } from './schemas';
+import { RESPONSE_SCHEMA, TASK_SCHEMA, type TaskFormValues, type TaskInput } from './schemas';
+import type { CreateTaskState } from './task-action-types';
 import type { LearningConfig } from '@/lib/learning-config';
-import { inferLanguageTag } from '@/lib/language-utils';
+import { inferLanguageRuntime, inferLanguageTag } from '@/lib/language-utils';
 import { verifyCaptcha } from './captcha';
 
 type CheckSolutionResult = {
@@ -18,6 +19,52 @@ type CheckSolutionResult = {
   feedbackMdx?: MDXRemoteSerializeResult;
   hints: string[];
 };
+
+export type TaskGenerationConfig = Partial<Pick<LearningConfig, 'aiMentorRole' | 'aiContentLanguage'>> & {
+  languageName?: string;
+  codeFileExtension?: string;
+};
+
+function canonicalizeTag(value: string) {
+  return value.trim().toLowerCase().replace(/[\s._-]+/g, '').replace(/[^a-z0-9#+]/g, '');
+}
+
+function removeLanguageTags(tags: string[], languageName: string) {
+  const languageRuntime = inferLanguageRuntime(languageName);
+  const blocked = new Set([
+    languageName.trim().toLowerCase(),
+    inferLanguageTag(languageName),
+    canonicalizeTag(languageName),
+  ].filter(Boolean));
+  const seen = new Set<string>();
+
+  return tags.filter((tag) => {
+    const trimmed = tag.trim();
+    if (!trimmed) {
+      return false;
+    }
+
+    const normalized = trimmed.toLowerCase();
+    const canonical = canonicalizeTag(trimmed);
+    const tagRuntime = inferLanguageRuntime(trimmed);
+    const isSameKnownLanguage =
+      languageRuntime.editor !== 'plaintext' &&
+      tagRuntime.editor !== 'plaintext' &&
+      languageRuntime.editor === tagRuntime.editor &&
+      languageRuntime.ext === tagRuntime.ext;
+
+    if (blocked.has(normalized) || blocked.has(canonical) || isSameKnownLanguage) {
+      return false;
+    }
+
+    if (seen.has(canonical)) {
+      return false;
+    }
+
+    seen.add(canonical);
+    return true;
+  });
+}
 
 export async function checkSolutionImpl(
   userCode: string,
@@ -94,12 +141,7 @@ Return score as an integer from 0 to 100 (not 0 to 1).`,
 export async function generateTaskActionImpl(
   topic: string,
   captchaToken: string,
-  config?: Pick<LearningConfig, 'aiMentorRole' | 'aiContentLanguage'> & {
-    languageName?: string;
-    defaultTag?: string;
-    codeFileExtension?: string;
-  },
-
+  config?: TaskGenerationConfig,
 ): Promise<TaskInput> {
   await verifyCaptcha(captchaToken);
   await requireAuthenticatedUser();
@@ -118,7 +160,6 @@ export async function generateTaskActionImpl(
   const mentorRole = config?.aiMentorRole ?? 'Senior Programming Mentor';
   const languageName = config?.languageName?.trim() || 'Programming Language';
   const contentLanguage = config?.aiContentLanguage ?? 'English';
-  const defaultTag = config?.defaultTag ?? inferLanguageTag(languageName);
   const fileExtension = config?.codeFileExtension ?? 'txt';
   const safeTopic = topic.trim() || `${languageName} fundamentals and control flow`;
   const { output: generatedTask } = await generateText({
@@ -142,54 +183,75 @@ Requirements:
 - starterCode must be valid ${languageName} code with intentional gaps/bugs, not more then 25 lines of code
 - referenceSolution must be valid ${languageName} code that fixes the task
 - prefer snippets with .${fileExtension} style syntax
-- tags should be short and interview-relevant, include "${defaultTag}"`,
+- tags should be short and interview-relevant
+- do not include the programming language itself as a tag`,
   });
 
-  return TASK_SCHEMA.parse(generatedTask);
+  const task = TASK_SCHEMA.parse(generatedTask);
+
+  return {
+    ...task,
+    tags: removeLanguageTags(task.tags, task.languageName),
+  };
 }
 
-export async function createTaskActionImpl(input: TaskInput, captchaToken: string): Promise<{ slug: string }> {
-  await verifyCaptcha(captchaToken);
-  const { supabase, user } = await requireAuthenticatedUser();
+export async function createTaskActionImpl(input: TaskFormValues, captchaToken: string): Promise<CreateTaskState> {
+  try {
+    // 1. Validation and Auth
+    await verifyCaptcha(captchaToken);
+    const { supabase, user } = await requireAuthenticatedUser();
 
-  const data = TASK_SCHEMA.parse(input);
-  const baseSlug = slugify(data.title);
+    // 2. Schema parsing (Zod)
+    const data = TASK_SCHEMA.parse(input);
+    const sanitizedTags = removeLanguageTags(data.tags, data.languageName);
+    const baseSlug = slugify(data.title);
 
-  if (!baseSlug) {
-    throw new Error('Unable to generate slug from title');
-  }
-
-  const maxAttempts = 20;
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const candidateSlug = attempt === 0 ? baseSlug : `${baseSlug}-${attempt + 1}`;
-
-    const { error } = await supabase.from('tasks').insert({
-      slug: candidateSlug,
-      title: data.title,
-      difficulty: data.difficulty,
-      tags: data.tags,
-      hint: data.hint,
-      created_by: user.id,
-      content: {
-        languageName: data.languageName.trim(),
-        description: data.description,
-        starterCode: data.starterCode,
-        referenceSolution: data.referenceSolution,
-      },
-    });
-
-    if (!error) {
-      revalidatePath('/');
-      revalidatePath(`/tasks/${candidateSlug}`);
-      return { slug: candidateSlug };
+    if (!baseSlug) {
+      return { success: false, error: 'Unable to generate slug from title' };
     }
 
-    if (isSlugConflict(error)) {
-      continue;
+    // 3. Slug collision resolution loop
+    const maxAttempts = 20;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const candidateSlug = attempt === 0 ? baseSlug : `${baseSlug}-${attempt + 1}`;
+
+      const { error: dbError } = await supabase.from('tasks').insert({
+        slug: candidateSlug,
+        title: data.title,
+        difficulty: data.difficulty,
+        tags: sanitizedTags,
+        hint: data.hint,
+        created_by: user.id,
+        content: {
+          languageName: data.languageName.trim(),
+          description: data.description,
+          starterCode: data.starterCode,
+          referenceSolution: data.referenceSolution,
+        },
+      });
+
+      if (!dbError) {
+        // Success: Revalidate and return the slug
+        revalidatePath('/');
+        revalidatePath(`/tasks/${candidateSlug}`);
+        return { success: true, slug: candidateSlug };
+      }
+
+      // If it's a slug conflict, we try the next attempt
+      if (isSlugConflict(dbError)) {
+        continue;
+      }
+
+      return { success: false, error: `Database error: ${dbError.message}` };
     }
 
-    throw new Error(`Failed to create task in Supabase: ${error.message}`);
-  }
+    return { success: false, error: `Could not create unique slug after ${maxAttempts} attempts` };
 
-  throw new Error(`Could not create unique slug after ${maxAttempts} attempts`);
+  } catch (err: unknown) {
+    // Catch-all for Zod or unexpected errors
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'An unexpected error occurred'
+    };
+  }
 }

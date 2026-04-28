@@ -114,14 +114,6 @@ export async function getTasksPaginated(
   }));
 }
 
-/**
- * Metadata structure for filtering tasks
- */
-interface TagMetadata {
-  name: string;
-  count: number;
-}
-
 export async function getFilterMetadata(params: TaskFiltersParams = {}) {
   const supabase = await createSupabaseServerClient();
 
