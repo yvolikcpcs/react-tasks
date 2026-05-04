@@ -1,4 +1,5 @@
-import { Suspense } from 'react';
+import { cache, Suspense } from 'react';
+import type { Metadata } from 'next';
 import { ChevronLeft, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { getTaskBySlug } from '@/lib/supabase-tasks';
@@ -12,9 +13,24 @@ import { learningConfig } from '@/lib/learning-config';
 import { inferLanguageRuntime } from '@/lib/language-utils';
 import TaskSkeleton from './loading';
 
+const getCachedTaskBySlug = cache(getTaskBySlug);
+
+export async function generateMetadata(
+  { params }: { params: Promise<{ slug: string }> }
+): Promise<Metadata> {
+  const { slug } = await params;
+  const task = await getCachedTaskBySlug(slug);
+
+  return {
+    title: task
+      ? `${task.data.languageName}: ${task.data.title} | Code Mentor AI`
+      : 'Task not found | Code Mentor AI',
+    keywords: task ? [task.data.languageName, ...task.data.tags] : undefined,
+  };
+}
+
 async function TaskContent({ slug }: { slug: string }) {
-  
-  const task = await getTaskBySlug(slug);
+  const task = await getCachedTaskBySlug(slug);
   
   if (!task) return notFound();
 

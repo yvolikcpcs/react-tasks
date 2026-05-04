@@ -43,8 +43,10 @@ This project intentionally uses modern **Next.js App Router** and **React 19** p
 - **Dynamic routes** via [`app/tasks/[slug]/page.tsx`](app/tasks/[slug]/page.tsx).
 - **`searchParams`-driven routing** for filterable task listing.
 - **`Suspense` boundaries** for streaming task list and task detail content.
-- **Metadata API** with route-level `generateMetadata()` for task detail SEO.
-- **Cache revalidation** with `revalidatePath()` after task creation.
+- **Metadata API** with route-level `generateMetadata()` for task detail titles and keywords.
+- **React `cache()`** for request-level deduplication between task page rendering and task metadata generation.
+- **`unstable_cache()`** for caching public Supabase task reads across requests.
+- **Cache revalidation** with `revalidatePath()` and `revalidateTag()` after task creation.
 - **Navigation hooks** such as `useRouter()` and `useSearchParams()` for client-side transitions.
 - **`next/dynamic`** to lazy-load the task creation modal so the home page does not ship the heavier form logic until it is opened.
 - **`next/font`** for optimized Geist and Geist Mono loading.
@@ -111,6 +113,7 @@ For testing or mobile-client integration, the project currently exposes two read
 - **RLS:** All database interactions are protected by Supabase Row Level Security.
 - **Server Actions:** Secure server-side logic for AI evaluations and task creation.
 - **Static-friendly public reads:** Public task catalog/detail queries use a cookie-free Supabase client, while auth-aware UI is handled separately in the browser.
+- **Data cache invalidation:** Public task query caches are tagged and invalidated on task creation.
 - **Proxy auth sync:** Request-time Supabase session refresh via `proxy.ts`.
 - **Analytics:** Integrated Vercel Analytics for basic usage monitoring.
 

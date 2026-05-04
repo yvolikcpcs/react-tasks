@@ -1,5 +1,5 @@
 import { generateText, Output } from 'ai';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { serialize } from 'next-mdx-remote/serialize';
 import type { MDXRemoteSerializeResult } from 'next-mdx-remote';
 import { mentorModel } from './ai-client';
@@ -10,6 +10,11 @@ import { RESPONSE_SCHEMA, TASK_SCHEMA, type TaskFormValues, type TaskInput } fro
 import type { CreateTaskState } from './task-action-types';
 import type { LearningConfig } from '@/lib/learning-config';
 import { inferLanguageRuntime, inferLanguageTag } from '@/lib/language-utils';
+import {
+  TASKS_DETAIL_CACHE_TAG,
+  TASKS_LIST_CACHE_TAG,
+  TASKS_METADATA_CACHE_TAG,
+} from '@/lib/supabase-tasks';
 import { canonicalizeTag, normalizeTag } from '@/lib/tag-utils';
 import { verifyCaptcha } from './captcha';
 
@@ -229,8 +234,10 @@ export async function createTaskActionImpl(input: TaskFormValues, captchaToken: 
 
       if (!dbError) {
         // Success: Revalidate and return the slug
+        revalidateTag(TASKS_LIST_CACHE_TAG, 'max');
+        revalidateTag(TASKS_DETAIL_CACHE_TAG, 'max');
+        revalidateTag(TASKS_METADATA_CACHE_TAG, 'max');
         revalidatePath('/');
-        revalidatePath(`/tasks/${candidateSlug}`);
         return { success: true, slug: candidateSlug };
       }
 

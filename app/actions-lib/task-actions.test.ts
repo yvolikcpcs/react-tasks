@@ -19,7 +19,9 @@ vi.mock('./captcha', () => ({
 }));
 
 vi.mock('next/cache', () => ({
-  revalidatePath: vi.fn()
+  revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
+  unstable_cache: vi.fn((fn) => fn),
 }));
 
 // 1. Mock the entire rate-limit module

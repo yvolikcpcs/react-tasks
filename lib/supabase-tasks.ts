@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache';
 import type { Difficulty, TaskFiltersParams } from '@/lib/types/task';
 import { createSupabasePublicClient } from '@/lib/supabase-public';
 import { normalizeTag, normalizeTags } from '@/lib/tag-utils';
@@ -21,6 +22,11 @@ type TaskRow = {
   } | null;
 };
 
+export const TASKS_LIST_CACHE_TAG = 'tasks-list';
+export const TASKS_DETAIL_CACHE_TAG = 'tasks-detail';
+export const TASKS_METADATA_CACHE_TAG = 'tasks-metadata';
+const TASKS_CACHE_REVALIDATE_SECONDS = 300;
+
 function normalizeDifficultyFilter(difficulty?: string) {
   return difficulty?.toLowerCase();
 }
@@ -37,7 +43,7 @@ function getTaskLanguageLabel(languageName: string | undefined) {
   return normalizeTaskLanguage(languageName) ?? 'Programming Language';
 }
 
-export async function getAllTasks() {
+async function getAllTasksImpl() {
   const supabase = createSupabasePublicClient();
   const { data, error } = await supabase
     .from('tasks')
@@ -58,7 +64,7 @@ export async function getAllTasks() {
   }));
 }
 
-export async function getTaskBySlug(slug: string) {
+async function getTaskBySlugImpl(slug: string) {
   const supabase = createSupabasePublicClient();
   const { data: row, error } = await supabase
     .from('tasks')
@@ -94,7 +100,7 @@ export async function getTaskBySlug(slug: string) {
   };
 }
 
-export async function getTasksPaginated(
+async function getTasksPaginatedImpl(
   limit = 10, 
   offset = 0, 
   filters: TaskFiltersParams = {}
@@ -149,7 +155,7 @@ export async function getTasksPaginated(
     .slice(offset, offset + limit);
 }
 
-export async function getFilterMetadata(params: TaskFiltersParams = {}) {
+async function getFilterMetadataImpl(params: TaskFiltersParams = {}) {
   const supabase = createSupabasePublicClient();
 
   // We fetch all tasks to have global counts for languages and difficulty,
@@ -202,4 +208,44 @@ export async function getFilterMetadata(params: TaskFiltersParams = {}) {
   });
 
   return { languages, tags };
+}
+
+const getAllTasksCached = unstable_cache(getAllTasksImpl, ['tasks-all'], {
+  tags: [TASKS_LIST_CACHE_TAG],
+  revalidate: TASKS_CACHE_REVALIDATE_SECONDS,
+});
+
+const getTaskBySlugCached = unstable_cache(getTaskBySlugImpl, ['task-by-slug'], {
+  tags: [TASKS_DETAIL_CACHE_TAG],
+  revalidate: TASKS_CACHE_REVALIDATE_SECONDS,
+});
+
+const getTasksPaginatedCached = unstable_cache(getTasksPaginatedImpl, ['tasks-paginated'], {
+  tags: [TASKS_LIST_CACHE_TAG],
+  revalidate: TASKS_CACHE_REVALIDATE_SECONDS,
+});
+
+const getFilterMetadataCached = unstable_cache(getFilterMetadataImpl, ['tasks-filter-metadata'], {
+  tags: [TASKS_METADATA_CACHE_TAG],
+  revalidate: TASKS_CACHE_REVALIDATE_SECONDS,
+});
+
+export async function getAllTasks() {
+  return getAllTasksCached();
+}
+
+export async function getTaskBySlug(slug: string) {
+  return getTaskBySlugCached(slug);
+}
+
+export async function getTasksPaginated(
+  limit = 10,
+  offset = 0,
+  filters: TaskFiltersParams = {}
+) {
+  return getTasksPaginatedCached(limit, offset, filters);
+}
+
+export async function getFilterMetadata(params: TaskFiltersParams = {}) {
+  return getFilterMetadataCached(params);
 }
