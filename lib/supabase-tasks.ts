@@ -1,5 +1,5 @@
 import type { Difficulty, TaskFiltersParams } from '@/lib/types/task';
-import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { createSupabasePublicClient } from '@/lib/supabase-public';
 import { normalizeTag, normalizeTags } from '@/lib/tag-utils';
 import {
   canonicalizeLanguageName,
@@ -38,7 +38,7 @@ function getTaskLanguageLabel(languageName: string | undefined) {
 }
 
 export async function getAllTasks() {
-  const supabase = await createSupabaseServerClient();
+  const supabase = createSupabasePublicClient();
   const { data, error } = await supabase
     .from('tasks')
     .select('slug,title,difficulty,tags,content')
@@ -59,7 +59,7 @@ export async function getAllTasks() {
 }
 
 export async function getTaskBySlug(slug: string) {
-  const supabase = await createSupabaseServerClient();
+  const supabase = createSupabasePublicClient();
   const { data: row, error } = await supabase
     .from('tasks')
     .select('slug,title,difficulty,tags,hint,content')
@@ -99,7 +99,7 @@ export async function getTasksPaginated(
   offset = 0, 
   filters: TaskFiltersParams = {}
 ) {
-  const supabase = await createSupabaseServerClient();
+  const supabase = createSupabasePublicClient();
   
   // Start building the query
   let query = supabase
@@ -150,7 +150,7 @@ export async function getTasksPaginated(
 }
 
 export async function getFilterMetadata(params: TaskFiltersParams = {}) {
-  const supabase = await createSupabaseServerClient();
+  const supabase = createSupabasePublicClient();
 
   // We fetch all tasks to have global counts for languages and difficulty,
   // but we will count tags conditionally.

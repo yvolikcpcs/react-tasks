@@ -1,6 +1,7 @@
 'use client';
 
 import type { RefObject } from 'react';
+import Link from 'next/link';
 import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import type { FieldErrors, UseFormRegister } from 'react-hook-form';
 import type { TaskFormValues } from '@/app/actions-lib/schemas';
@@ -10,6 +11,7 @@ import { GenerateButton } from './generate-button';
 
 type TaskFormFieldsProps = {
   formErrorMessage: string | null;
+  isAuthenticated: boolean | null;
   isGenerating: boolean;
   languageLabel: string;
   languageRuntimeExt: string;
@@ -26,6 +28,7 @@ type TaskFormFieldsProps = {
 
 export function TaskFormFields({
   formErrorMessage,
+  isAuthenticated,
   isGenerating,
   languageLabel,
   languageRuntimeExt,
@@ -39,6 +42,20 @@ export function TaskFormFields({
   topicError,
   turnstileRef,
 }: TaskFormFieldsProps) {
+  const canSubmit = isAuthenticated === true;
+
+  if (!canSubmit) {
+    return (
+      <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+        Sign in to generate or save tasks.
+        {' '}
+        <Link href="/auth" className="font-semibold underline underline-offset-2">
+          Go to sign in
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`space-y-4 transition-opacity duration-300 ${
@@ -60,10 +77,12 @@ export function TaskFormFields({
             className="w-full"
             inputClassName="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500"
           />
-          <GenerateButton
-            loading={isGenerating}
-            onClick={onGenerateClick}
-          />
+          {canSubmit && (
+            <GenerateButton
+              loading={isGenerating}
+              onClick={onGenerateClick}
+            />
+          )}
         </div>
       </div>
 
@@ -144,14 +163,16 @@ export function TaskFormFields({
         </div>
       )}
 
-      <div className="flex justify-center border-t border-slate-100 py-4">
-        <Turnstile
-          ref={turnstileRef}
-          siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
-          onSuccess={onCaptchaSuccess}
-          onExpire={onCaptchaExpire}
-        />
-      </div>
+      {canSubmit && (
+        <div className="flex justify-center border-t border-slate-100 py-4">
+          <Turnstile
+            ref={turnstileRef}
+            siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+            onSuccess={onCaptchaSuccess}
+            onExpire={onCaptchaExpire}
+          />
+        </div>
+      )}
     </div>
   );
 }

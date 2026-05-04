@@ -36,7 +36,10 @@ This project intentionally uses modern **Next.js App Router** and **React 19** p
   - AI task generation
   - task creation
   - sign in / sign out flows
-- **Route Handlers** via [`app/auth/callback/route.ts`](app/auth/callback/route.ts) for Supabase auth callback handling.
+- **Route Handlers** for Supabase auth callback handling and JSON task APIs:
+  - [`app/auth/callback/route.ts`](app/auth/callback/route.ts)
+  - [`app/api/tasks/route.ts`](app/api/tasks/route.ts)
+  - [`app/api/tasks/[slug]/route.ts`](app/api/tasks/[slug]/route.ts)
 - **Dynamic routes** via [`app/tasks/[slug]/page.tsx`](app/tasks/[slug]/page.tsx).
 - **`searchParams`-driven routing** for filterable task listing.
 - **`Suspense` boundaries** for streaming task list and task detail content.
@@ -83,6 +86,15 @@ npm run dev
 npm run build
 npm run start
 ```
+
+## 🔌 API Endpoints
+
+For testing or mobile-client integration, the project currently exposes two read-only task endpoints:
+
+- `GET /api/tasks`
+  - supports `limit`, `offset`, `language`, `difficulty`, and `tag` query params
+- `GET /api/tasks/[slug]`
+  - returns full task details for a single task
 
 ## 📜 Available Scripts
 

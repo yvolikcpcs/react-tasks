@@ -4,6 +4,7 @@ import { SaveButton } from './save-button';
 
 type TaskFormFooterProps = {
   hasCaptcha: boolean;
+  isAuthenticated: boolean | null;
   isCreating: boolean;
   isGenerating: boolean;
   onClose: () => void;
@@ -12,11 +13,14 @@ type TaskFormFooterProps = {
 
 export function TaskFormFooter({
   hasCaptcha,
+  isAuthenticated,
   isCreating,
   isGenerating,
   onClose,
   onSaveClick,
 }: TaskFormFooterProps) {
+  const canSubmit = isAuthenticated === true;
+
   return (
     <div className="flex items-center justify-end gap-3">
       <button
@@ -26,11 +30,13 @@ export function TaskFormFooter({
       >
         Cancel
       </button>
-      <SaveButton
-        disabled={isGenerating || !hasCaptcha}
-        loading={isCreating}
-        onClick={onSaveClick}
-      />
+      {canSubmit && (
+        <SaveButton
+          disabled={isGenerating || !hasCaptcha}
+          loading={isCreating}
+          onClick={onSaveClick}
+        />
+      )}
     </div>
   );
 }

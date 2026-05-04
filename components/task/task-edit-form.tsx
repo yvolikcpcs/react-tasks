@@ -2,32 +2,29 @@
 
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 import type { LearningConfig } from '@/lib/learning-config';
+import { useBrowserAuthState } from '@/components/auth/use-browser-auth-state';
 
 // Lazy-load the modal form so the home page does not pay for RHF, Turnstile, and action wiring before the dialog is opened.
-const TaskEditFormDialog = dynamic(() => import('./task-edit-form-dialog'));
+const TaskFormModal = dynamic(() =>
+  import('./form/task-form-modal').then((module) => module.TaskFormModal)
+);
 
 type TaskFormProps = {
   config: Pick<LearningConfig, 'aiMentorRole' | 'aiContentLanguage'>;
-  isGuest: boolean;
 };
 
-export default function TaskForm({ config, isGuest }: TaskFormProps) {
-  const router = useRouter();
+export default function TaskForm({ config }: TaskFormProps) {
   const [open, setOpen] = useState(false);
+  const isAuthenticated = useBrowserAuthState();
 
   const handleOpenModal = () => {
-    if (isGuest) {
-      router.push('/auth');
-      return;
-    }
     setOpen(true);
   };
 
   return (
-    <>
+    <div className="shrink-0">
       <button
         type="button"
         onClick={handleOpenModal}
@@ -38,12 +35,13 @@ export default function TaskForm({ config, isGuest }: TaskFormProps) {
       </button>
 
       {open && (
-        <TaskEditFormDialog
+        <TaskFormModal
           config={config}
           closeModal={() => setOpen(false)}
+          isAuthenticated={isAuthenticated}
           open={open}
         />
       )}
-    </>
+    </div>
   );
 }
